@@ -329,6 +329,10 @@ myScript hwr (needs a developer account):
 	%s
 	%s      override the language specified in myScript requests
 	%s      custom myScript host URL (default: https://cloud.myscript.com)
+
+V6 file format support:
+	Native rmc-go library with Cairo renderer is always enabled.
+	No configuration needed - v6 files are rendered in-process.
 `,
 		envJWTSecretKey,
 		EnvStorageURL,
