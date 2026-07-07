@@ -269,24 +269,26 @@ func (app *ReactAppWrapper) getDocument(c *gin.Context) {
 	exportType := c.DefaultQuery("type", "pdf")
 	var exportOption storage.ExportOption = 0
 
-	log.Info("exporting ", docid, " as ", exportType)
+	log.Infof("getDocument: uid=%s docid=%s type=%s", uid, docid, exportType)
 	backend := app.getBackend(c)
 
 	reader, err := backend.Export(uid, docid, exportType, exportOption)
 	if err != nil {
-		log.Error(err)
+		log.Errorf("getDocument: Export failed for docid=%s: %v", docid, err)
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
 
 	defer reader.Close()
 
+	log.Infof("getDocument: streaming docid=%s as %s", docid, exportType)
 	if exportType == "rmdoc" {
 		c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s.rmdoc\"", docid))
 		c.DataFromReader(http.StatusOK, -1, "application/octet-stream", reader, nil)
 	} else {
 		c.DataFromReader(http.StatusOK, -1, "application/pdf", reader, nil)
 	}
+	log.Infof("getDocument: finished streaming docid=%s", docid)
 }
 
 func (app *ReactAppWrapper) getDocumentMetadata(c *gin.Context) {

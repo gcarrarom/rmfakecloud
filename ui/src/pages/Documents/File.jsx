@@ -13,11 +13,54 @@ import { Document, Page } from "react-pdf";
 
 const RmdocViewer = lazy(() => import("./RmdocViewer"));
 
+function usePdfData(fileId) {
+  const [pdfData, setPdfData] = useState(null);
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!fileId) return;
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    setPdfData(null);
+
+    const url = `${constants.ROOT_URL}/documents/${fileId}`;
+    console.log("[File] Fetching PDF data from:", url);
+
+    fetch(url, { credentials: 'include' })
+      .then((response) => {
+        console.log("[File] PDF fetch response:", response.status, response.headers.get('content-type'));
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        return response.arrayBuffer();
+      })
+      .then((data) => {
+        if (!cancelled) {
+          console.log("[File] PDF data loaded, size:", data.byteLength);
+          setPdfData(data);
+          setLoading(false);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          console.error("[File] PDF fetch error:", err);
+          setError(err.message);
+          setLoading(false);
+        }
+      });
+
+    return () => { cancelled = true; };
+  }, [fileId]);
+
+  return { pdfData, error, loading };
+}
 
 export default function FileViewer({ file, onSelect }) {
   const { data } = file;
 
-  const downloadUrl = `${constants.ROOT_URL}/documents/${file.id}`;
+  const { pdfData, error: pdfError, loading: pdfLoading } = usePdfData(file.id);
 
   const [viewMode, setViewMode] = useState("pdf"); // "pdf" or "rmdoc"
   const [page, setPage] = useState(1);
@@ -117,13 +160,21 @@ export default function FileViewer({ file, onSelect }) {
 
       {file && (
         <div ref={parent} style={{ height: "95%" }}>
-          <Document file={{ url: downloadUrl, withCredentials: true }} onLoadSuccess={onLoadSuccess}>
-            <Page pageNumber={page}
-              height={height}
-              renderAnnotationLayer={false}
-              renderTextLayer={false}
-            />
-          </Document>
+          {pdfLoading && <div className="text-center p-5"><Spinner animation="border" /> Loading PDF…</div>}
+          {pdfError && <div className="text-center p-5 text-danger">Failed to load PDF: {pdfError}</div>}
+          {pdfData && (
+            <Document
+              file={pdfData}
+              onLoadSuccess={onLoadSuccess}
+              onLoadError={(error) => console.error("[File] PDF render error:", error)}
+            >
+              <Page pageNumber={page}
+                height={height}
+                renderAnnotationLayer={false}
+                renderTextLayer={false}
+              />
+            </Document>
+          )}
         </div>
       )}
     </>
