@@ -5,11 +5,10 @@ ENV PATH="$PNPM_HOME:$PATH"
 RUN corepack enable pnpm && corepack install -g pnpm@latest-9
 
 WORKDIR /src
-#COPY ui/package.json ui/pnpm-lock.yaml /src
-#RUN pnpm fetch 
-
+COPY ui/package.json ui/pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
 COPY ui .
-RUN pnpm install && pnpm build
+RUN pnpm build
 
 FROM golang:bookworm AS gobuilder
 ARG VERSION
@@ -20,6 +19,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libcairo2-dev \
     pkg-config \
     && rm -rf /var/lib/apt/lists/*
+
+# Cache Go module downloads
+COPY go.mod go.sum ./
+RUN go mod download
 
 COPY . .
 COPY --from=uibuilder /src/dist ./ui/dist
