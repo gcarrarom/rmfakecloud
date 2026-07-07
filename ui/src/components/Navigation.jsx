@@ -15,17 +15,17 @@ const NavigationBar = () => {
     return user && user.Roles && user.Roles[0] === "Admin";
   }
   return (
-    <Navbar className="sticky-top">
+    <Navbar className="sticky-top" expand="md">
       <Container fluid>
         <Navbar.Brand>
           <Nav.Link as={NavLink} to="/">
             rmfakecloud
           </Nav.Link>
         </Navbar.Brand>
-        <Navbar.Toggle />
+        <Navbar.Toggle aria-controls="main-navigation" />
         {user && (
           <>
-            <Navbar.Collapse>
+            <Navbar.Collapse id="main-navigation">
               <Nav>
                 {" "}
                 <Nav.Item>

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Stack } from "react-bootstrap";
 import {
   useReactTable,
@@ -8,6 +8,8 @@ import {
 } from "@tanstack/react-table";
 import FileIcon from "./FileIcon";
 import moment from "moment";
+import { BsChevronRight } from "react-icons/bs";
+import styles from "./Documents.module.scss";
 
 // optional: load user-specific locale from config
 // moment.locale(locale); // eg. 'de' or 'fr'
@@ -21,6 +23,20 @@ function formatBytes(bytes) {
 }
 
 export default function FileListViewer({ listStyle, files, onSelect, counter, selectedIds = [], onSelectItem }) {
+  const [isMobile, setIsMobile] = useState(() => window.matchMedia("(max-width: 767.98px)").matches);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(max-width: 767.98px)");
+    const updateIsMobile = (event) => {
+      setIsMobile(event.matches);
+    };
+
+    setIsMobile(mediaQuery.matches);
+    mediaQuery.addEventListener("change", updateIsMobile);
+
+    return () => mediaQuery.removeEventListener("change", updateIsMobile);
+  }, []);
+
   const onClickItem = (file) => {
     onSelect(file);
   }
@@ -129,6 +145,45 @@ export default function FileListViewer({ listStyle, files, onSelect, counter, se
     },
   });
 
+  const mobileListItems = table.getRowModel().rows.map((row) => {
+    const item = row.original;
+    const isSelected = selectedIds.includes(item.id);
+    const secondaryText = item.isLeaf
+      ? formatBytes(item.data.size)
+      : `${item.children?.length || 0} items`;
+
+    return (
+      <div key={row.id} className={styles.mobileFileCard}>
+        <label className={styles.mobileFileToggle}>
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={() => onSelectItem && onSelectItem(item.id)}
+          />
+        </label>
+        <div className={styles.mobileFileMain} onClick={() => onClickItem(item)}>
+          <div className={styles.mobileFileIcon}>
+            <FileIcon file={item.data} />
+          </div>
+          <div className={styles.mobileFileInfo}>
+            <div className={`${styles.mobileFileName} ${isFolderClassName(item)}`}>
+              {item.data.name}
+            </div>
+            <div className={styles.mobileFileMeta}>
+              {secondaryText}
+            </div>
+            <div className={styles.mobileFileMeta}>
+              {moment(item.data.lastModified).format('L')} {moment(item.data.lastModified).format('LT')}
+            </div>
+          </div>
+        </div>
+        <div className={styles.mobileFileAction} onClick={() => onClickItem(item)}>
+          <BsChevronRight />
+        </div>
+      </div>
+    );
+  });
+
   const gridFolderItems = files.filter(file => !file.isLeaf).map(file =>
     <div className="filegrid-folder-item" key={file.id}>
       <input
@@ -168,7 +223,17 @@ export default function FileListViewer({ listStyle, files, onSelect, counter, se
 
   return (
     <>
+      {files && isMobile && listStyle === "list" && (
+        <div>
+          <div style={{ height: '0.75em', width: '100%' }}></div>
+          <div className={styles.mobileFileList}>
+            {mobileListItems}
+          </div>
+        </div>
+      )}
+
       {files && (listStyle === "list") && (
+        !isMobile &&
         <div>
           <div style={{ height: '1em', width: '100%' }}></div>
           <div className="filelist">

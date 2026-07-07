@@ -123,6 +123,14 @@ code {
   width: calc(100vw - 100px) !important;
 }
 
+.navbar-collapse {
+  min-width: 0;
+}
+
+.navbar-nav {
+  gap: 0.25rem;
+}
+
 .documents-tree {
   div[role=treeitem] {
     outline: none;
@@ -273,4 +281,48 @@ main h2 {
 
 .flex-spacer {
   flex: 1;
+}
+
+@media (max-width: 768px) {
+  html, body {
+    overflow: auto;
+  }
+
+  #root {
+    min-height: 100%;
+  }
+
+  .container-fluid {
+    margin: 0 14px;
+    width: calc(100vw - 28px) !important;
+  }
+
+  #root > nav {
+    padding-top: 0.35rem;
+    padding-bottom: 0.35rem;
+  }
+
+  .navbar-collapse {
+    padding-top: 0.5rem;
+  }
+
+  .navbar-nav .nav-link,
+  .navbar-nav .dropdown-toggle {
+    padding-top: 0.65rem;
+    padding-bottom: 0.65rem;
+  }
+
+  .filelist {
+    overflow-x: auto;
+
+    .filelist-header,
+    .filelist-item {
+      min-width: 640px;
+    }
+  }
+
+  .filegrid {
+    grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+    grid-gap: 0.75em;
+  }
 }

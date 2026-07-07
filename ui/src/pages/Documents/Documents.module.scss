@@ -2,6 +2,9 @@
 
 .treeContainer {
     height: 100%;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
 
     // Ensure the inner div also takes full height
     > div {
@@ -12,6 +15,68 @@
     div[role="tree"] {
         height: 100%;
     }
+}
+
+.pageShell {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 25px 0 20px 0;
+}
+
+.contentRow {
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.sidebarColumn,
+.detailColumn {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+}
+
+.detailViewport {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+}
+
+.mobilePaneTabs {
+    display: none;
+}
+
+.mobileHidden {
+    display: none;
+}
+
+.mobileOnlyDrawer {
+}
+
+.mobileDocumentHeader {
+    display: none;
+}
+
+.mobileSelectionLabel {
+    min-width: 0;
+    font-size: 0.9rem;
+    color: $foreground1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.documentDrawer {
+    --bs-offcanvas-width: min(92vw, 420px);
+}
+
+.documentDrawerBody {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding-top: 0.5rem;
 }
 
 .base {
@@ -43,6 +108,121 @@
 
 .filedivider {
     border-bottom: 2px solid $foreground1;
+}
+
+.toolbar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    width: 100%;
+}
+
+.toolbarRight {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-left: auto;
+}
+
+.viewerShell {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+}
+
+.viewerContent {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+}
+
+.viewerFrame {
+    height: 100%;
+}
+
+.pageStatus {
+    white-space: nowrap;
+}
+
+.breadcrumbGroup {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+    min-width: 0;
+}
+
+.breadcrumbSeparator {
+    color: $foreground2;
+    flex: 0 0 auto;
+}
+
+.breadcrumbButton {
+    min-width: 0;
+    max-width: 100%;
+    white-space: normal;
+    text-align: left;
+    word-break: break-word;
+}
+
+.mobileFileList {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.mobileFileCard {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 0.75rem;
+    align-items: start;
+    padding: 0.9rem;
+    border: 1px solid $foreground2;
+    border-radius: 12px;
+    background-color: $background1;
+}
+
+.mobileFileToggle {
+    margin-top: 0.2rem;
+
+    input {
+        width: 1.2rem;
+        height: 1.2rem;
+    }
+}
+
+.mobileFileMain {
+    min-width: 0;
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+    cursor: pointer;
+}
+
+.mobileFileIcon {
+    flex: 0 0 auto;
+}
+
+.mobileFileInfo {
+    min-width: 0;
+}
+
+.mobileFileName {
+    font-weight: 600;
+    word-break: break-word;
+}
+
+.mobileFileMeta {
+    margin-top: 0.3rem;
+    font-size: 0.85rem;
+    color: $foreground2;
+}
+
+.mobileFileAction {
+    align-self: center;
 }
 
 .upload {
@@ -85,4 +265,103 @@
     border: none;
     width: 100%;
     background-color: transparent;
+}
+
+@media (max-width: 767.98px) {
+    .pageShell {
+        height: auto;
+        min-height: 100%;
+        overflow: visible;
+        padding: 12px 0 16px 0;
+    }
+
+    .contentRow {
+        flex: 0 0 auto;
+        min-height: auto;
+        row-gap: 0.75rem;
+    }
+
+    .sidebarColumn,
+    .detailColumn {
+        height: auto;
+    }
+
+    .mobilePaneTabs {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .mobilePaneTabs > * {
+        flex: 1 1 0;
+    }
+
+    .treeContainer {
+        min-height: 320px;
+        max-height: 52vh;
+    }
+
+    .mobileOnlyDrawer {
+        display: none;
+    }
+
+    .mobileDocumentHeader {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .mobileDocumentHeader > :first-child {
+        flex: 0 0 auto;
+    }
+
+    .mobileSelectionLabel {
+        flex: 1 1 auto;
+    }
+
+    .detailViewport {
+        overflow: visible;
+    }
+
+    .toolbar {
+        justify-content: space-between;
+    }
+
+    .toolbarRight {
+        width: 100%;
+        margin-left: 0;
+    }
+
+    .viewerContent {
+        overflow: visible;
+    }
+
+    .viewerFrame {
+        height: auto;
+        min-height: 320px;
+    }
+
+    .pageStatus {
+        order: 3;
+        width: 100%;
+        white-space: normal;
+    }
+
+    .breadcrumbGroup {
+        row-gap: 0.25rem;
+    }
+
+    .breadcrumbButton {
+        padding: 0.45rem 0.65rem;
+        font-size: 0.92rem;
+    }
+
+    .upload {
+        padding: 14px;
+    }
+
+    .documentDrawerBody {
+        min-height: 0;
+    }
 }

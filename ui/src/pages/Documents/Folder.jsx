@@ -68,18 +68,19 @@ export default function Folder({ selection, onSelect, onUpdate }) {
         { folder && (<div><NameTag node={folder} onSelect={onSelect} /></div>) }
       </Navbar>
 
-      <Navbar className={styles.filedivider}>
+      <Navbar className={`${styles.filedivider} ${styles.toolbar}`}>
         <Button size="sm" variant="outline" onClick={() => setShowCreateFolder(true)}>Create Folder</Button>
-        <div className={styles.stretch}></div>
-        <Button size="sm" onClick={onDeleteClick} disabled={selectedIds.length === 0}>Delete</Button>
-        <ToggleButtonGroup value={listStyle} onChange={(v) => setListStyle(v)} name="abc">
-          <ToggleButton id="grid" name="grid" size="sm" value="grid" variant="outline">
-            <BsFillGridFill />
-          </ToggleButton>
-          <ToggleButton id="list" name="list" size="sm" value="list" variant="outline">
-            <FaList />
-          </ToggleButton>
-        </ToggleButtonGroup>
+        <div className={styles.toolbarRight}>
+          <Button size="sm" onClick={onDeleteClick} disabled={selectedIds.length === 0}>Delete</Button>
+          <ToggleButtonGroup value={listStyle} onChange={(v) => setListStyle(v)} name="abc">
+            <ToggleButton id="grid" name="grid" size="sm" value="grid" variant="outline">
+              <BsFillGridFill />
+            </ToggleButton>
+            <ToggleButton id="list" name="list" size="sm" value="list" variant="outline">
+              <FaList />
+            </ToggleButton>
+          </ToggleButtonGroup>
+        </div>
       </Navbar>
 
       <Upload filesUploaded={fileUploaded} uploadFolder={selection.id}></Upload>

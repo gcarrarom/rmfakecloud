@@ -10,6 +10,7 @@ import apiservice from "../../services/api.service";
 import NameTag from "../../components/NameTag";
 import RmdocEditor from "./RmdocEditor";
 import { buildRmdoc } from "./rmBinaryWriter";
+import styles from "./Documents.module.scss";
 
 export default function RmdocViewer({ file, onSelect }) {
   const { data } = file;
@@ -164,14 +165,14 @@ export default function RmdocViewer({ file, onSelect }) {
     );
   }
   return (
-    <>
+    <div className={styles.viewerShell}>
       <Navbar style={{ marginLeft: "-12px" }}>
         {file && <NameTag node={file} onSelect={onSelect} />}
       </Navbar>
 
-      <Navbar>
+      <Navbar className={styles.toolbar}>
         {pages.length > 1 && (
-          <div>
+          <div className={styles.pageStatus}>
             <ButtonGroup aria-label="Page navigation">
               <Button size="sm" variant="outline-secondary" onClick={onPrev}>
                 <FaChevronLeft />
@@ -185,44 +186,42 @@ export default function RmdocViewer({ file, onSelect }) {
             </span>
           </div>
         )}
-        <div style={{ flex: 1 }} />
-
-        <Button
-          size="sm"
-          variant={editMode ? "outline-primary" : "outline-secondary"}
-          onClick={() => setEditMode(!editMode)}
-          className="me-2"
-          title={editMode ? "Switch to view mode" : "Switch to edit mode"}
-        >
-          {editMode ? <BsEye /> : <BsPencil />}
-        </Button>
-
-        {modified && (
+        <div className={styles.toolbarRight}>
           <Button
             size="sm"
-            variant="success"
-            onClick={onSaveRmdoc}
-            disabled={saving}
-            className="me-2"
+            variant={editMode ? "outline-primary" : "outline-secondary"}
+            onClick={() => setEditMode(!editMode)}
+            title={editMode ? "Switch to view mode" : "Switch to edit mode"}
           >
-            {saving ? <Spinner size="sm" animation="border" /> : "Save"}
+            {editMode ? <BsEye /> : <BsPencil />}
           </Button>
-        )}
 
-        <Dropdown align="end">
-          <Dropdown.Toggle size="sm" variant="secondary">
-            <AiOutlineDownload />
-          </Dropdown.Toggle>
-          <Dropdown.Menu>
-            <Dropdown.Item onClick={onDownloadPdf}>Download PDF</Dropdown.Item>
-            <Dropdown.Item onClick={onDownloadRmdoc}>
-              Download .rmdoc
-            </Dropdown.Item>
-          </Dropdown.Menu>
-        </Dropdown>
+          {modified && (
+            <Button
+              size="sm"
+              variant="success"
+              onClick={onSaveRmdoc}
+              disabled={saving}
+            >
+              {saving ? <Spinner size="sm" animation="border" /> : "Save"}
+            </Button>
+          )}
+
+          <Dropdown align="end">
+            <Dropdown.Toggle size="sm" variant="secondary">
+              <AiOutlineDownload />
+            </Dropdown.Toggle>
+            <Dropdown.Menu>
+              <Dropdown.Item onClick={onDownloadPdf}>Download PDF</Dropdown.Item>
+              <Dropdown.Item onClick={onDownloadRmdoc}>
+                Download .rmdoc
+              </Dropdown.Item>
+            </Dropdown.Menu>
+          </Dropdown>
+        </div>
       </Navbar>
 
-      <div style={{ height: "90%", overflow: "auto" }}>
+      <div className={styles.viewerContent}>
         {editMode ? (
           <RmdocEditor
             pages={pages}
@@ -230,7 +229,7 @@ export default function RmdocViewer({ file, onSelect }) {
             onStrokeChange={onStrokeChange}
           />
         ) : (
-          <div style={{ height: "100%" }}>
+          <div className={styles.viewerFrame}>
             <RmdocEditor
               pages={pages}
               currentPage={page}
@@ -240,6 +239,6 @@ export default function RmdocViewer({ file, onSelect }) {
           </div>
         )}
       </div>
-    </>
+    </div>
   );
 }

@@ -2,11 +2,11 @@ import DocumentTree from "./Tree";
 import apiservice from "../../services/api.service"
 import { useEffect, useRef, useState } from "react";
 import { useParams, useHistory } from "react-router-dom";
-import { Container, Row, Col } from "react-bootstrap";
+import { Container, Row, Col, Offcanvas } from "react-bootstrap";
 import File from "./File";
 import Folder from "./Folder";
 import Navbar from 'react-bootstrap/Navbar';
-import { BsSearch } from "react-icons/bs";
+import { BsList, BsSearch } from "react-icons/bs";
 import Form from 'react-bootstrap/Form';
 import Button from 'react-bootstrap/Button';
 import InputGroup from 'react-bootstrap/InputGroup';
@@ -23,6 +23,8 @@ export default function DocumentList() {
   const [entries, setEntries] = useState([])
   const [initialSelectionSet, setInitialSelectionSet] = useState(false);
   const [treeHeight, setTreeHeight] = useState(700);
+  const [isMobile, setIsMobile] = useState(() => window.matchMedia("(max-width: 767.98px)").matches);
+  const [showBrowserDrawer, setShowBrowserDrawer] = useState(false);
 
   const { itemId } = useParams();
   const history = useHistory();
@@ -31,6 +33,24 @@ export default function DocumentList() {
   const treeRef = useRef(null);
   const treeContainerRef = useRef(null);
   const lastSelectedId = useRef(null);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(max-width: 767.98px)");
+    const updateIsMobile = (event) => {
+      setIsMobile(event.matches);
+    };
+
+    setIsMobile(mediaQuery.matches);
+    mediaQuery.addEventListener("change", updateIsMobile);
+
+    return () => mediaQuery.removeEventListener("change", updateIsMobile);
+  }, []);
+
+  useEffect(() => {
+    if (isMobile && selected) {
+      setShowBrowserDrawer(false);
+    }
+  }, [isMobile, selected]);
 
   useEffect(() => {
     lastSelectedId.current = selected?.id || null;
@@ -227,9 +247,17 @@ export default function DocumentList() {
   }, [entries, itemId, initialSelectionSet]);
 
   return (
-    <Container fluid style={{height: "100%", display: "flex", flexDirection: "column", overflow: "hidden", padding: "25px 0 20px 0"}}>
-        <Row style={{flex: "1 1 auto", minHeight: 0}}>
-          <Col md={4} style={{display: "flex", flexDirection: "column", height: "100%"}}>
+    <Container fluid className={styles.pageShell}>
+        {isMobile && (
+          <div className={styles.mobileDocumentHeader}>
+            <Button size="sm" variant="outline-secondary" onClick={() => setShowBrowserDrawer(true)}>
+              <BsList /> Browse documents
+            </Button>
+            {selected && <div className={styles.mobileSelectionLabel}>{selected.data?.name}</div>}
+          </div>
+        )}
+        <Row className={styles.contentRow}>
+          <Col md={4} xs={12} className={`${styles.sidebarColumn} ${isMobile ? styles.mobileOnlyDrawer : ""}`}>
             <Navbar style={{flexShrink: 0}}>
               <div className={`${styles.stretch} ${styles.userid}`}>{user.UserID}</div>
               <Button variant="outline" onClick={() => { setShowSearch(!showSearch); setTerm("") }}><BsSearch/></Button>
@@ -245,17 +273,42 @@ export default function DocumentList() {
               </InputGroup>
             </div>}
 
-            <div ref={treeContainerRef} className={styles.treeContainer} style={{flex: "1 1 auto", minHeight: 0, overflow: "auto"}}>
-              <DocumentTree selection={selected} onSelect={onSelect} treeRef={treeRef} term={term} entries={entries} height={treeHeight} />
+            <div ref={treeContainerRef} className={styles.treeContainer}>
+              <DocumentTree selection={selected} onSelect={onSelect} treeRef={treeRef} term={term} entries={entries} height={Math.max(treeHeight, isMobile ? 320 : 700)} />
             </div>
           </Col>
-          <Col md={8} style={{display: "flex", flexDirection: "column", height: "100%"}}>
-            <div style={{flex: "1 1 auto", minHeight: 0, overflow: "auto"}}>
+          <Col md={8} xs={12} className={styles.detailColumn}>
+            <div className={styles.detailViewport}>
               {selected && selected.isLeaf && <File file={selected} onSelect={onSelect} />}
               {selected && !selected.isLeaf && <Folder selection={selected} onSelect={onSelect} onUpdate={onUpdate} counter={counter} />}
             </div>
           </Col>
         </Row>
+        <Offcanvas show={showBrowserDrawer} onHide={() => setShowBrowserDrawer(false)} placement="start" responsive="md" className={styles.documentDrawer}>
+          <Offcanvas.Header closeButton>
+            <Offcanvas.Title>Documents</Offcanvas.Title>
+          </Offcanvas.Header>
+          <Offcanvas.Body className={styles.documentDrawerBody}>
+            <Navbar style={{flexShrink: 0}}>
+              <div className={`${styles.stretch} ${styles.userid}`}>{user.UserID}</div>
+              <Button variant="outline" onClick={() => { setShowSearch(!showSearch); setTerm("") }}><BsSearch/></Button>
+            </Navbar>
+
+            {showSearch && <div style={{flexShrink: 0}}>
+              <InputGroup className="mb-3">
+                <InputGroup.Text>
+                  <BsSearch />
+                </InputGroup.Text>
+
+                <Form.Control autoFocus size="sm" type="text" value={term} onChange={(e) => { setTerm(e.currentTarget.value); }} />
+              </InputGroup>
+            </div>}
+
+            <div className={styles.treeContainer}>
+              <DocumentTree selection={selected} onSelect={onSelect} treeRef={treeRef} term={term} entries={entries} height={Math.max(treeHeight, 420)} />
+            </div>
+          </Offcanvas.Body>
+        </Offcanvas>
     </Container>
   );
 }

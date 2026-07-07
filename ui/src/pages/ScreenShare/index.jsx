@@ -64,8 +64,21 @@ export default function ScreenShare() {
   const [showControls, setShowControls] = useState(false);
   const [pinnedPosition, setPinnedPosition] = useState(null);
   const [controlsPosition, setControlsPosition] = useState("right");
+  const [isMobile, setIsMobile] = useState(() => window.matchMedia("(max-width: 767.98px)").matches);
   const controlsRef = useRef(null);
   const manualRotationRef = useRef(0);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(max-width: 767.98px)");
+    const updateIsMobile = (event) => {
+      setIsMobile(event.matches);
+    };
+
+    setIsMobile(mediaQuery.matches);
+    mediaQuery.addEventListener("change", updateIsMobile);
+
+    return () => mediaQuery.removeEventListener("change", updateIsMobile);
+  }, []);
 
   useEffect(() => {
     if (!showControls) return;
@@ -87,12 +100,12 @@ export default function ScreenShare() {
       const isRotated = rot % 180 !== 0;
       const aspect = isRotated ? canvas.height / canvas.width : canvas.width / canvas.height;
       const vpAspect = (window.innerWidth - 50) / window.innerHeight;
-      setControlsPosition(aspect < vpAspect ? "right" : "top");
+      setControlsPosition(isMobile ? "bottom" : aspect < vpAspect ? "right" : "top");
     };
     check();
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
-  }, [poppedOut, manualRotation]);
+  }, [poppedOut, manualRotation, isMobile]);
   const videoRef = useRef(null);
   const pcRef = useRef(null);
   const dcRef = useRef(null);
@@ -479,7 +492,7 @@ export default function ScreenShare() {
 
 
   return (
-    <Container className="mt-4">
+    <Container className="mt-3 mt-md-4 pb-3">
       {status === STATUS.ERROR && (
         <Alert variant="info">
           {errorMsg}
@@ -517,10 +530,12 @@ export default function ScreenShare() {
           justifyContent: "center",
           paddingTop: controlsPosition === "top" ? 40 : 0,
           paddingRight: controlsPosition === "right" ? 50 : 0,
+          paddingBottom: controlsPosition === "bottom" ? 80 : 0,
         } : {
           display: status === STATUS.STREAMING ? "flex" : "none",
           flexDirection: "column",
           alignItems: "center",
+          width: "100%",
         }}
       >
         {(() => {
@@ -534,20 +549,23 @@ export default function ScreenShare() {
           if (poppedOut) {
             const pad = controlsPosition === "right" ? 56 : 0;
             const topPad = controlsPosition === "top" ? 48 : 0;
+            const bottomPad = controlsPosition === "bottom" ? 96 : 0;
             if (isRotated) {
-              canvasStyle.maxWidth = `calc(100vh - ${topPad}px)`;
+              canvasStyle.maxWidth = `calc(100vh - ${topPad + bottomPad}px)`;
               canvasStyle.maxHeight = `calc(100vw - ${pad}px)`;
             } else {
               canvasStyle.maxWidth = `calc(100vw - ${pad}px)`;
-              canvasStyle.maxHeight = `calc(100vh - ${topPad}px)`;
+              canvasStyle.maxHeight = `calc(100vh - ${topPad + bottomPad}px)`;
             }
             canvasStyle.width = "auto";
           } else if (isRotated) {
-            canvasStyle.height = "70vh";
+            canvasStyle.height = isMobile ? "55vh" : "70vh";
+            canvasStyle.maxWidth = "100%";
             canvasStyle.width = "auto";
           } else {
             canvasStyle.width = "100%";
-            canvasStyle.maxWidth = "min(600px, 100%)";
+            canvasStyle.maxWidth = isMobile ? "100%" : "min(600px, 100%)";
+            canvasStyle.maxHeight = isMobile ? "70vh" : "none";
           }
           return <canvas ref={videoRef} style={canvasStyle} />;
         })()}
@@ -567,37 +585,53 @@ export default function ScreenShare() {
         {(() => {
           const light = poppedOut && isLightColor(resolveBackdrop(backdrop));
           const btnVar = poppedOut ? (light ? "outline-dark" : "outline-light") : "outline-secondary";
+          const thumbButtonStyle = poppedOut && isMobile ? {
+            minHeight: 44,
+            minWidth: 44,
+            padding: "0.55rem 0.8rem",
+          } : undefined;
+          const thumbActionStyle = poppedOut && isMobile ? {
+            flex: 1,
+            minHeight: 44,
+            whiteSpace: "nowrap",
+          } : undefined;
           if (poppedOut) {
             return (
               <div ref={controlsRef} style={{
                 position: "fixed",
-                top: 8,
+                top: controlsPosition === "bottom" ? "auto" : 8,
+                bottom: controlsPosition === "bottom" ? 8 : "auto",
+                left: controlsPosition === "bottom" ? 8 : "auto",
                 right: 8,
                 zIndex: 10001,
                 display: "flex",
-                flexDirection: "column",
+                flexDirection: controlsPosition === "bottom" ? "row" : "column",
                 alignItems: controlsPosition === "right" ? "center" : "flex-end",
-                gap: 4,
-                maxHeight: "calc(100vh - 16px)",
+                gap: isMobile ? 8 : 4,
+                maxHeight: controlsPosition === "bottom" ? "none" : "calc(100vh - 16px)",
+                maxWidth: controlsPosition === "bottom" ? "calc(100vw - 16px)" : "none",
                 overflowY: "auto",
+                width: controlsPosition === "bottom" ? "calc(100vw - 16px)" : "auto",
               }}>
-                <div style={{ display: "flex", flexDirection: controlsPosition === "right" ? "column" : "row", gap: 4 }}>
+                <div style={{ display: "flex", flexDirection: controlsPosition === "right" ? "column" : "row", gap: isMobile ? 8 : 4, width: controlsPosition === "bottom" ? "100%" : "auto" }}>
                   {controlsPosition === "right" ? (
                     <>
-                      <Button variant={btnVar} size="sm" onClick={() => setPoppedOut(false)} title="Exit fullscreen">
+                      <Button variant={btnVar} size="sm" onClick={() => setPoppedOut(false)} title="Exit fullscreen" style={thumbButtonStyle}>
                         <BsFullscreenExit />
                       </Button>
-                      <Button variant={btnVar} size="sm" onClick={() => { setShowControls((s) => { if (!s) setPinnedPosition(controlsPosition); return !s; }); }} title="Options">
+                      <Button variant={btnVar} size="sm" onClick={() => { setShowControls((s) => { if (!s) setPinnedPosition(controlsPosition); return !s; }); }} title="Options" style={thumbButtonStyle}>
                         <BsGearFill />
                       </Button>
                     </>
                   ) : (
                     <>
-                      <Button variant={btnVar} size="sm" onClick={() => { setShowControls((s) => { if (!s) setPinnedPosition(controlsPosition); return !s; }); }} title="Options">
+                      <Button variant={btnVar} size="sm" onClick={() => { setShowControls((s) => { if (!s) setPinnedPosition(controlsPosition); return !s; }); }} title="Options" style={thumbActionStyle}>
                         <BsGearFill />
+                        {isMobile && <span style={{ marginLeft: 6 }}>Options</span>}
                       </Button>
-                      <Button variant={btnVar} size="sm" onClick={() => setPoppedOut(false)} title="Exit fullscreen">
+                      <Button variant={btnVar} size="sm" onClick={() => setPoppedOut(false)} title="Exit fullscreen" style={thumbActionStyle}>
                         <BsFullscreenExit />
+                        {isMobile && <span style={{ marginLeft: 6 }}>Exit</span>}
                       </Button>
                     </>
                   )}
@@ -605,41 +639,45 @@ export default function ScreenShare() {
                 {showControls && (
                   <div style={{
                     position: "fixed",
-                    top: (pinnedPosition || controlsPosition) === "right" ? 90 : 8,
-                    right: (pinnedPosition || controlsPosition) === "right" ? 8 : 90,
+                    top: (pinnedPosition || controlsPosition) === "right" ? 90 : (pinnedPosition || controlsPosition) === "bottom" ? "auto" : 8,
+                    bottom: (pinnedPosition || controlsPosition) === "bottom" ? 56 : "auto",
+                    left: (pinnedPosition || controlsPosition) === "bottom" ? 8 : "auto",
+                    right: (pinnedPosition || controlsPosition) === "right" ? 8 : (pinnedPosition || controlsPosition) === "bottom" ? 8 : 90,
                     zIndex: 10002,
                     display: "flex", flexDirection: "column", gap: 4,
                     background: light ? "rgba(255,255,255,0.95)" : "rgba(0,0,0,0.9)",
-                    borderRadius: 6, padding: 8,
+                    borderRadius: 10, padding: isMobile ? 10 : 8,
                     alignItems: "stretch", minWidth: 160,
+                    maxWidth: "calc(100vw - 16px)",
+                    width: (pinnedPosition || controlsPosition) === "bottom" ? "calc(100vw - 16px)" : "auto",
                   }}>
-                    <div style={{ display: "flex", gap: 4 }}>
-                      <Button variant={btnVar} size="sm" onClick={() => setManualRotation((r) => r - 90)} title="Rotate counter-clockwise" style={{ flex: 1, whiteSpace: "nowrap" }}>
+                    <div style={{ display: "flex", gap: isMobile ? 8 : 4, flexDirection: isMobile ? "column" : "row" }}>
+                      <Button variant={btnVar} size="sm" onClick={() => setManualRotation((r) => r - 90)} title="Rotate counter-clockwise" style={{ flex: 1, whiteSpace: "nowrap", minHeight: isMobile ? 44 : undefined }}>
                         <BsArrowCounterclockwise /> Rotate L
                       </Button>
-                      <Button variant={btnVar} size="sm" onClick={() => setManualRotation((r) => r + 90)} title="Rotate clockwise" style={{ flex: 1, whiteSpace: "nowrap" }}>
+                      <Button variant={btnVar} size="sm" onClick={() => setManualRotation((r) => r + 90)} title="Rotate clockwise" style={{ flex: 1, whiteSpace: "nowrap", minHeight: isMobile ? 44 : undefined }}>
                         <BsArrowClockwise /> Rotate R
                       </Button>
                     </div>
-                    <Button variant={btnVar} size="sm" onClick={disconnect} title="End screenshare session">
+                    <Button variant={btnVar} size="sm" onClick={disconnect} title="End screenshare session" style={{ minHeight: isMobile ? 44 : undefined }}>
                       Disconnect
                     </Button>
-                    <div style={{ display: "flex", gap: 4, alignItems: "center", justifyContent: "center", marginTop: 2 }}>
+                    <div style={{ display: "flex", gap: isMobile ? 8 : 4, alignItems: "center", justifyContent: isMobile ? "space-between" : "center", marginTop: 2, flexWrap: "wrap" }}>
                       {Object.entries(BACKDROP_PRESETS).map(([name, color]) => (
                         <button
                           key={name}
                           title={name}
                           onClick={() => { setBackdrop(name); setBackdropPref(name); }}
                           style={{
-                            width: 22, height: 22, borderRadius: 3,
+                            width: isMobile ? 32 : 22, height: isMobile ? 32 : 22, borderRadius: 3,
                             border: backdrop === name ? "2px solid #0d6efd" : "1px solid #666",
                             background: color, cursor: "pointer", padding: 0,
                           }}
                         />
                       ))}
-                      <label title="Custom color" style={{ position: "relative", width: 22, height: 22, cursor: "pointer" }}>
+                      <label title="Custom color" style={{ position: "relative", width: isMobile ? 32 : 22, height: isMobile ? 32 : 22, cursor: "pointer" }}>
                         <span style={{
-                          display: "block", width: 22, height: 22, borderRadius: 3,
+                          display: "block", width: isMobile ? 32 : 22, height: isMobile ? 32 : 22, borderRadius: 3,
                           border: !BACKDROP_PRESETS[backdrop] ? "2px solid #0d6efd" : "1px solid #666",
                           background: "conic-gradient(red, yellow, lime, aqua, blue, magenta, red)",
                         }} />
@@ -663,7 +701,7 @@ export default function ScreenShare() {
             );
           }
           return (
-            <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 6 }}>
+            <div style={{ marginTop: 8, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, flexWrap: "wrap", width: "100%" }}>
               <Button variant={btnVar} size="sm" onClick={() => setManualRotation((r) => r - 90)} title="Rotate left">
                 <BsArrowCounterclockwise />
               </Button>

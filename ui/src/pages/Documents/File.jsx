@@ -8,6 +8,7 @@ import constants from "../../common/constants";
 
 import apiservice from "../../services/api.service"
 import NameTag from "../../components/NameTag"
+import styles from "./Documents.module.scss";
 
 import { Document, Page } from "react-pdf";
 
@@ -116,14 +117,14 @@ export default function FileViewer({ file, onSelect }) {
   }
 
   return (
-    <>
+    <div className={styles.viewerShell}>
       <Navbar style={{ marginLeft: '-12px' }}>
         {file && (<div><NameTag node={file} onSelect={onSelect} /></div>)}
       </Navbar>
 
-      <Navbar>
+      <Navbar className={styles.toolbar}>
         {pages > 1 && (
-          <div>
+          <div className={styles.pageStatus}>
             <ButtonGroup aria-label="Basic example">
               <Button size="sm" variant="outline-secondary" onClick={onPrev}><FaChevronLeft /></Button>
               <Button size="sm" variant="outline-secondary" onClick={onNext}><FaChevronRight /></Button>
@@ -133,33 +134,32 @@ export default function FileViewer({ file, onSelect }) {
             </span>
           </div>
         )}
-        <div style={{ flex: 1 }}></div>
+        <div className={styles.toolbarRight}>
+          <Button
+            size="sm"
+            variant="outline-info"
+            onClick={() => setViewMode("rmdoc")}
+            title="View & edit natively"
+          >
+            <BsPencil /> Native
+          </Button>
 
-        <Button
-          size="sm"
-          variant="outline-info"
-          onClick={() => setViewMode("rmdoc")}
-          className="me-2"
-          title="View & edit natively"
-        >
-          <BsPencil /> Native
-        </Button>
-
-        <Dropdown align="end">
-          <Dropdown.Toggle size="sm" variant="secondary">
-            <AiOutlineDownload />
-          </Dropdown.Toggle>
-          <Dropdown.Menu>
-            <Dropdown.Item onClick={onDownloadPdf}>Download PDF</Dropdown.Item>
-            <Dropdown.Item onClick={onDownloadRmdoc}>Download .rmdoc</Dropdown.Item>
-          </Dropdown.Menu>
-        </Dropdown>
+          <Dropdown align="end">
+            <Dropdown.Toggle size="sm" variant="secondary">
+              <AiOutlineDownload />
+            </Dropdown.Toggle>
+            <Dropdown.Menu>
+              <Dropdown.Item onClick={onDownloadPdf}>Download PDF</Dropdown.Item>
+              <Dropdown.Item onClick={onDownloadRmdoc}>Download .rmdoc</Dropdown.Item>
+            </Dropdown.Menu>
+          </Dropdown>
+        </div>
 
       </Navbar>
 
 
       {file && (
-        <div ref={parent} style={{ height: "95%" }}>
+        <div ref={parent} className={styles.viewerContent}>
           {pdfLoading && <div className="text-center p-5"><Spinner animation="border" /> Loading PDF…</div>}
           {pdfError && <div className="text-center p-5 text-danger">Failed to load PDF: {pdfError}</div>}
           {pdfData && (
@@ -177,6 +177,6 @@ export default function FileViewer({ file, onSelect }) {
           )}
         </div>
       )}
-    </>
+    </div>
   );
 }
