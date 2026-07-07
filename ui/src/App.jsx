@@ -25,10 +25,6 @@ import "./App.scss"
 
 import { pdfjs } from "react-pdf";
 pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.js';
-pdfjs.GlobalWorkerOptions.workerPort = new Worker(
-  new URL('/pdf.worker.js', window.location.href),
-  { type: 'module' }
-);
 
 export default function App() {
 
