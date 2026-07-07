@@ -62,6 +62,13 @@ jobs:
           version: 9
           run_install: false
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '21'
+          cache: 'pnpm'
+          cache-dependency-path: ui/pnpm-lock.yaml
+
       - name: Install Cairo dependencies
         run: |
           sudo apt-get update

@@ -32,6 +32,48 @@ const cachedTreeName = ".tree"
 const historyFile = ".root.history"
 const rootBlob = "root"
 
+const maxLockRetries = 3
+
+// lockWithRetry attempts to acquire a file lock with exponential backoff.
+// Returns an unlock function that MUST be called (no-op if lock was skipped or failed).
+func (fs *FileSystemStorage) lockWithRetry(uid string) (unlock func(), err error) {
+	unlock = func() {} // no-op fallback
+
+	if fs.Cfg.SkipFileLock {
+		log.Warn("File locking disabled, proceeding without lock")
+		return
+	}
+
+	historyPath := path.Join(fs.getUserBlobPath(uid), historyFile)
+	lock := fslock.New(historyPath)
+	timeout := time.Duration(fs.Cfg.LockTimeout) * time.Second
+
+	var lastErr error
+	for attempt := 0; attempt < maxLockRetries; attempt++ {
+		lastErr = lock.LockWithTimeout(timeout)
+		if lastErr == nil {
+			log.Debugf("Lock acquired for %s (attempt %d)", uid, attempt+1)
+			unlock = func() {
+				if uerr := lock.Unlock(); uerr != nil {
+					log.Warnf("Failed to release lock for %s: %v", uid, uerr)
+				}
+			}
+			return
+		}
+
+		if attempt < maxLockRetries-1 {
+			backoff := timeout * time.Duration(1<<uint(attempt)) // timeout, 2*timeout
+			log.Warnf("Lock attempt %d/%d failed for %s: %v, retrying in %v",
+				attempt+1, maxLockRetries, uid, lastErr, backoff)
+			time.Sleep(backoff)
+		}
+	}
+
+	log.Errorf("Failed to acquire lock after %d attempts for %s: %v", maxLockRetries, uid, lastErr)
+	err = lastErr
+	return
+}
+
 // GetCachedTree returns the cached blob tree for the user
 func (fs *FileSystemStorage) GetCachedTree(uid string) (t *models.HashTree, err error) {
 	blobStorage := &LocalBlobStorage{
@@ -793,13 +835,11 @@ func (fs *FileSystemStorage) LoadBlob(uid, blobid string) (reader io.ReadCloser,
 	log.Debugln("Fullpath:", blobPath)
 	if blobid == rootBlob {
 		historyPath := path.Join(fs.getUserBlobPath(uid), historyFile)
-		lock := fslock.New(historyPath)
-		err := lock.LockWithTimeout(time.Duration(time.Second * 5))
-		if err != nil {
-			log.Error("cannot obtain lock")
-			return nil, 0, 0, "", err
+		unlock, lockErr := fs.lockWithRetry(uid)
+		if lockErr != nil {
+			return nil, 0, 0, "", lockErr
 		}
-		defer lock.Unlock()
+		defer unlock()
 
 		fi, err1 := os.Stat(historyPath)
 		if err1 == nil {
@@ -839,12 +879,11 @@ func (fs *FileSystemStorage) StoreBlob(uid, id string, stream io.Reader, lastGen
 	reader := stream
 	if id == rootBlob {
 		historyPath := path.Join(fs.getUserBlobPath(uid), historyFile)
-		lock := fslock.New(historyPath)
-		err = lock.LockWithTimeout(time.Duration(time.Second * 5))
-		if err != nil {
-			log.Error("cannot obtain lock")
+		unlock, lockErr := fs.lockWithRetry(uid)
+		if lockErr != nil {
+			return 0, lockErr
 		}
-		defer lock.Unlock()
+		defer unlock()
 
 		currentGen := int64(0)
 		fi, err1 := os.Stat(historyPath)

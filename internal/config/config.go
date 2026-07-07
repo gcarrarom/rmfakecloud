@@ -81,6 +81,11 @@ const (
 	envMQTTPort          = "MQTT_PORT"
 	envICEServers        = "ICE_SERVERS"
 	envHashSchemaVersion = "HASH_SCHEMA_VERSION"
+
+	// EnvLockTimeout file lock timeout in seconds (default: 5)
+	EnvLockTimeout = "LOCK_TIMEOUT"
+	// EnvSkipFileLock disable file locking entirely (not recommended, risks data corruption)
+	EnvSkipFileLock = "SKIP_FILE_LOCK"
 )
 
 // Config config
@@ -106,6 +111,8 @@ type Config struct {
 	MQTTPort          string
 	ICEServers        []interface{}
 	HashSchemaVersion string
+	LockTimeout       int
+	SkipFileLock      bool
 }
 
 // Verify verify
@@ -264,6 +271,19 @@ func FromEnv() *Config {
 		log.Fatalf("%s must be either '3' or '4', got: %s", envHashSchemaVersion, hashSchemaVersion)
 	}
 
+	lockTimeout := 5
+	if v := os.Getenv(EnvLockTimeout); v != "" {
+		if t, err := strconv.Atoi(v); err == nil && t > 0 {
+			lockTimeout = t
+		} else {
+			log.Warnf("Invalid %s value '%s', using default %ds", EnvLockTimeout, v, lockTimeout)
+		}
+	}
+	skipFileLock, _ := strconv.ParseBool(os.Getenv(EnvSkipFileLock))
+	if skipFileLock {
+		log.Warn("File locking is disabled — concurrent access may cause data corruption")
+	}
+
 	cfg := Config{
 		Port:              port,
 		StorageURL:        uploadURL,
@@ -283,6 +303,8 @@ func FromEnv() *Config {
 		MQTTPort:          mqttPort,
 		ICEServers:        iceServers,
 		HashSchemaVersion: hashSchemaVersion,
+		LockTimeout:       lockTimeout,
+		SkipFileLock:      skipFileLock,
 	}
 	return &cfg
 }
@@ -308,6 +330,8 @@ General:
 	%s Send auth cookie only via https
 	%s	Trust the proxy for X-Forwarded-For/X-Real-IP (set only if behind a proxy)
 	%s	Hash tree schema version: "3" or "4" (default: 3)
+	%s	File lock timeout in seconds (default: 5), increase for slow storage (e.g. Longhorn, NFS)
+	%s	Disable file locking entirely ( risks data corruption with concurrent access)
 
 MQTT (for screenshare):
 	%s	MQTT TCP port (default: 8883)
@@ -349,6 +373,8 @@ V6 file format support:
 		envHTTPSCookie,
 		envTrustProxy,
 		envHashSchemaVersion,
+		EnvLockTimeout,
+		EnvSkipFileLock,
 
 		envMQTTPort,
 		envICEServers,
