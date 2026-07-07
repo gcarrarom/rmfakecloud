@@ -24,7 +24,7 @@ import "react-toastify/dist/ReactToastify.css";
 import "./App.scss"
 
 import { pdfjs } from "react-pdf";
-pdfjs.GlobalWorkerOptions.workerSrc = '/assets/pdf.worker.js';
+pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.js';
 
 export default function App() {
 
