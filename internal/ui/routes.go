@@ -19,6 +19,7 @@ func (app *ReactAppWrapper) RegisterRoutes(router *gin.Engine) {
 		c.FileFromFS("/robots.txt", app.fs)
 	})
 	router.GET("/pdf.worker.js", func(c *gin.Context) {
+		c.Header("Content-Type", "application/javascript")
 		c.FileFromFS("/pdf.worker.js", app.fs)
 	})
 
