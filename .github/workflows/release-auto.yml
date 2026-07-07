@@ -43,6 +43,8 @@ jobs:
     name: Build Binaries
     needs: release
     runs-on: ubuntu-24.04
+    permissions:
+      contents: write
     steps:
       - name: Check out code
         uses: actions/checkout@v4
