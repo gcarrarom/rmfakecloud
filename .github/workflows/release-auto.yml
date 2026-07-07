@@ -18,7 +18,12 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Release
-        uses: release-it/release-it-action@v2
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          node-version: '21'
+
+      - name: Release
+        run: npx release-it
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
