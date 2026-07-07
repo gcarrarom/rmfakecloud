@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -46,6 +47,7 @@ type App struct {
 	hwrClient     *hwr.HWRClient
 	mqttBroker    *mqtt.Broker
 	roomManager   *screenshare.RoomManager
+	fileWatcher   *FileWatcher
 }
 
 // Start starts the app
@@ -105,7 +107,9 @@ func (app *App) Start() {
 func (app *App) Stop() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	// app.hub.Stop()
+	if app.fileWatcher != nil {
+		app.fileWatcher.Stop()
+	}
 	if app.mqttBroker != nil {
 		if err := app.mqttBroker.Stop(); err != nil {
 			log.Errorf("Error stopping MQTT broker: %v", err)
@@ -141,6 +145,18 @@ func NewApp(cfg *config.Config) App {
 	codeConnector := NewCodeConnector()
 	router := gin.Default()
 
+	// Start file watcher for external changes
+	fw, err := NewFileWatcher(cfg.DataDir, ntfHub)
+	if err != nil {
+		log.Warnf("Failed to start file watcher: %v", err)
+	} else {
+		// Watch existing users' sync directories
+		for _, u := range usrs {
+			syncDir := filepath.Join(cfg.DataDir, "users", u.ID, "sync")
+			fw.AddUser(u.ID, syncDir)
+		}
+	}
+
 	// corsConfig := cors.DefaultConfig()
 
 	// // corsConfig.AllowOrigins = []string{"*"}
@@ -172,6 +188,7 @@ func NewApp(cfg *config.Config) App {
 		hwrClient: &hwr.HWRClient{
 			Cfg: cfg,
 		},
+		fileWatcher: fw,
 	}
 
 	roomMgr := screenshare.NewRoomManager()

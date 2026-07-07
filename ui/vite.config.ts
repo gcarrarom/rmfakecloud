@@ -19,6 +19,11 @@ export default defineConfig({
       },
     },
   },
+  resolve: {
+    alias: {
+      "remarkable-rm": "node_modules/remarkable-rm/dist/index.global.js",
+    },
+  },
   css: {
     preprocessorOptions: {
       scss: {

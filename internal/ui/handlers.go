@@ -332,6 +332,41 @@ func (app *ReactAppWrapper) deleteDocument(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
+func (app *ReactAppWrapper) uploadRmdoc(c *gin.Context) {
+	uid := userID(c)
+	docid := c.Param("docid")
+	backend := app.getBackend(c)
+
+	form, err := c.MultipartForm()
+	if err != nil {
+		badReq(c, "not multiform")
+		return
+	}
+
+	files := form.File["file"]
+	if len(files) == 0 {
+		badReq(c, "no file uploaded")
+		return
+	}
+
+	f, err := files[0].Open()
+	if err != nil {
+		badReq(c, "cant open file")
+		return
+	}
+	defer f.Close()
+
+	err = backend.UpdateRmDoc(uid, docid, f)
+	if err != nil {
+		log.Error("[ui] uploadRmdoc:", err)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	backend.Sync(uid)
+	c.JSON(http.StatusOK, gin.H{"status": "ok"})
+}
+
 func (app *ReactAppWrapper) createFolder(c *gin.Context) {
 	upd := viewmodel.NewFolder{}
 	if err := c.ShouldBindJSON(&upd); err != nil {

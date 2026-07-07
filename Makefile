@@ -32,9 +32,6 @@ $(OUT_DIR)/$(BINARY)-docker:$(GOFILES)
 $(OUT_DIR)/$(BINARY)-cairo-x64:$(GOFILES)
 	GOOS=linux $(BUILD_CAIRO)
 
-$(OUT_DIR)/$(BINARY)-cairo-arm64:$(GOFILES)
-	GOOS=linux GOARCH=arm64 $(BUILD_CAIRO)
-
 container: $(OUT_DIR)/$(BINARY)-docker
 	docker build -t rmfakecloud -f Dockerfile.make .
 	

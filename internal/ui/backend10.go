@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"io"
 	"time"
 
@@ -129,4 +130,8 @@ func (d *backend10) DeleteDocument(uid, docID string) (err error) {
 	log.Info(uiLogger, "Deleted document id: ", docID)
 	d.hub.Notify(uid, webDevice, ntf, messages.DocDeletedEvent)
 	return nil
+}
+
+func (d *backend10) UpdateRmDoc(uid, docID string, stream io.Reader) (err error) {
+	return fmt.Errorf("rmdoc editing not supported for sync 1.0")
 }

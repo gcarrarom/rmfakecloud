@@ -142,6 +142,22 @@ class ApiServices {
     });
   }
 
+  uploadRmdoc(id, blob, filename) {
+    const formData = new FormData();
+    formData.append(
+      "file",
+      new File([blob], filename, { type: "application/zip" }),
+      filename
+    );
+    return fetch(`${constants.ROOT_URL}/documents/${id}/rmdoc`, {
+      method: "PUT",
+      body: formData,
+    }).then((r) => {
+      handleError(r);
+      return r.json();
+    });
+  }
+
   createFolder(data) {
     return fetch(`${constants.ROOT_URL}/folders`, {
       method: "POST",

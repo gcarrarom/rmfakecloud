@@ -784,6 +784,92 @@ func (fs *FileSystemStorage) createFromRmDoc(uid, parent string, stream io.Reade
 	}, nil
 }
 
+// UpdateBlobDocumentFromRmDoc replaces an existing document's blobs from an uploaded rmdoc ZIP
+func (fs *FileSystemStorage) UpdateBlobDocumentFromRmDoc(uid, docID string, stream io.Reader) error {
+	data, err := io.ReadAll(stream)
+	if err != nil {
+		return err
+	}
+
+	zr, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
+	if err != nil {
+		return err
+	}
+
+	tree, err := fs.GetCachedTree(uid)
+	if err != nil {
+		return err
+	}
+
+	doc, err := tree.FindDoc(docID)
+	if err != nil {
+		return err
+	}
+
+	blobStorage := fs.BlobStorage(uid)
+
+	err = updateTree(tree, blobStorage, func(t *models.HashTree) error {
+		doc, err = t.FindDoc(docID)
+		if err != nil {
+			return err
+		}
+
+		// Replace each file in the archive
+		for _, f := range zr.File {
+			rc, err := f.Open()
+			if err != nil {
+				return err
+			}
+			fileData, err := io.ReadAll(rc)
+			rc.Close()
+			if err != nil {
+				return err
+			}
+
+			reader := bytes.NewReader(fileData)
+			fileHash, fileSize, err := models.Hash(reader)
+			if err != nil {
+				return err
+			}
+			reader.Seek(0, io.SeekStart)
+			if err := blobStorage.Write(fileHash, reader); err != nil {
+				return err
+			}
+
+			// Find and replace the existing entry, or add new
+			found := false
+			for _, entry := range doc.Files {
+				if entry.EntryName == f.Name {
+					entry.Hash = fileHash
+					entry.Size = fileSize
+					found = true
+					break
+				}
+			}
+			if !found {
+				entry := models.NewHashEntry(fileHash, f.Name, fileSize)
+				if err := doc.AddFile(entry); err != nil {
+					return err
+				}
+			}
+		}
+
+		doc.Rehash()
+		indexReader, err := doc.IndexReader()
+		if err != nil {
+			return err
+		}
+		if err := blobStorage.Write(doc.Hash, indexReader); err != nil {
+			return err
+		}
+
+		t.Rehash()
+		return nil
+	})
+
+	return err
+}
+
 func createMetadataFile(metadata models.MetadataFile) (r io.Reader, filehash string, size int64, err error) {
 	jsn, err := json.Marshal(metadata)
 	if err != nil {

@@ -46,6 +46,10 @@ func (b *backend15) DeleteDocument(uid, docID string) (err error) {
 	return b.blobHandler.DeleteBlobDocument(uid, docID)
 }
 
+func (b *backend15) UpdateRmDoc(uid, docID string, stream io.Reader) (err error) {
+	return b.blobHandler.UpdateBlobDocumentFromRmDoc(uid, docID, stream)
+}
+
 func (b *backend15) Sync(uid string) {
 	b.h.NotifySync(uid, uuid.NewString())
 }
