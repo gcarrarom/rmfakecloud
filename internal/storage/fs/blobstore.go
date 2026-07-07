@@ -324,7 +324,7 @@ func (fs *FileSystemStorage) Export(uid, docid string) (r io.ReadCloser, err err
 			err = exporter.RenderPDF(archive, writer)
 			if err != nil {
 				log.Error(err)
-				writer.Close()
+				writer.CloseWithError(err)
 				return
 			}
 			writer.Close()
