@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState, useCallback } from "react";
 import { ButtonGroup, Button, Form } from "react-bootstrap";
 import { textToStrokes } from "./rmBinaryWriter";
+import { strokeWidthForBrushSize, strokeWidthForPoint } from "./strokeWidth";
 
 const CANVAS_W = 1404;
 const CANVAS_H = 1872;
@@ -39,30 +40,32 @@ function renderStrokesToCanvas(ctx, doc, scale) {
       const penColour = item.penColour || "Black";
       const brushSize = item.brushSize || 2.0;
 
-      let strokeWidth = brushSize * 6.0 - 10.8;
-      if (strokeWidth < 0.5) strokeWidth = 0.5;
-
       let color = "rgba(0,0,0,1)";
       if (penColour === "Grey") color = "rgba(128,128,128,1)";
       else if (penColour === "White") color = "rgba(255,255,255,1)";
 
       if (pen === "Highlighter") {
         color = "rgba(255,255,0,0.3)";
-        strokeWidth = brushSize * 8;
       }
 
       ctx.strokeStyle = color;
-      ctx.lineWidth = strokeWidth;
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
 
-      ctx.beginPath();
       const pts = item.points;
-      ctx.moveTo(pts[0].x, pts[0].y);
       for (let i = 1; i < pts.length; i++) {
-        ctx.lineTo(pts[i].x, pts[i].y);
+        const prev = pts[i - 1];
+        const cur = pts[i];
+        const w1 = strokeWidthForPoint(prev.width, brushSize);
+        const w2 = strokeWidthForPoint(cur.width, brushSize);
+        let segWidth = (w1 + w2) / 2.0;
+        if (segWidth < 0.5) segWidth = 0.5;
+        ctx.lineWidth = segWidth;
+        ctx.beginPath();
+        ctx.moveTo(prev.x, prev.y);
+        ctx.lineTo(cur.x, cur.y);
+        ctx.stroke();
       }
-      ctx.stroke();
     }
   }
 
@@ -160,7 +163,11 @@ export default function RmdocEditor({ pages, currentPage, onStrokeChange }) {
       if (penType === "Highlighter") color = "rgba(255,255,0,0.3)";
 
       ctx.strokeStyle = color;
-      ctx.lineWidth = penType === "Highlighter" ? 16 : 1.2;
+      const drawBrushSize = currentStroke?.brushSize || 2.0;
+      let drawWidth =
+        penType === "Highlighter" ? 16 : strokeWidthForBrushSize(drawBrushSize);
+      if (drawWidth < 0.5) drawWidth = 0.5;
+      ctx.lineWidth = drawWidth;
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
 
@@ -203,7 +210,7 @@ export default function RmdocEditor({ pages, currentPage, onStrokeChange }) {
     const strokeWidth =
       currentStroke.pen === "Highlighter"
         ? 16
-        : currentStroke.brushSize * 6.0 - 10.8;
+        : strokeWidthForBrushSize(currentStroke.brushSize);
 
     layer.items.push({
       type: "stroke",

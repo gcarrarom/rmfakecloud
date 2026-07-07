@@ -21,10 +21,11 @@ import (
 
 // DefaultTrashDir name of the trash dir
 const (
-	DefaultTrashDir = ".trash"
-	CacheDir        = ".cache"
-	Archive         = "archive"
-	SyncFolder      = "sync"
+	DefaultTrashDir         = ".trash"
+	CacheDir                = ".cache"
+	Archive                 = "archive"
+	SyncFolder              = "sync"
+	renderedPDFCacheVersion = "v2"
 )
 
 // FileSystemStorage store everything to disk
@@ -69,7 +70,7 @@ func (fs *FileSystemStorage) ExportDocument(uid, id, outputType string, exportOp
 		return nil, fmt.Errorf("cant find raw document %v", err)
 	}
 
-	outputFilePath := filepath.Join(cacheDirPath, sanitizedID+"-annotated.pdf")
+	outputFilePath := filepath.Join(cacheDirPath, sanitizedID+"-annotated-"+renderedPDFCacheVersion+".pdf")
 	outStat, err := os.Stat(outputFilePath)
 
 	// exists and not older
@@ -229,4 +230,3 @@ func (fs *FileSystemStorage) GetStorageURL(uid, id string) (docurl string, expir
 
 	return fmt.Sprintf("%s%s/%s", uploadRL, routeStorage, url.QueryEscape(signedToken)), exp, nil
 }
-

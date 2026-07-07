@@ -1,3 +1,5 @@
+import { strokeWidthForBrushSize } from "./strokeWidth";
+
 const HEADER_V5 = "reMarkable .lines file, version=5          ";
 
 function writeUint32LE(view, offset, value) {
@@ -136,6 +138,7 @@ export function textToStrokes(text, fontSize, fontFamily, offsetX, offsetY) {
 
   const strokes = [];
   const sampleStep = Math.max(1, Math.floor(2 / scale));
+  const textBrushSize = Math.max(2.0, fontSize / 12);
 
   for (const contour of contours) {
     const points = [];
@@ -146,7 +149,7 @@ export function textToStrokes(text, fontSize, fontFamily, offsetX, offsetY) {
         y: pt.y / scale + offsetY,
         speed: 0,
         direction: 0,
-        width: 2.0,
+        width: strokeWidthForBrushSize(textBrushSize),
         pressure: 0.5,
       });
     }
@@ -155,7 +158,7 @@ export function textToStrokes(text, fontSize, fontFamily, offsetX, offsetY) {
         type: "stroke",
         pen: "BallPoint",
         penColour: "Black",
-        brushSize: 2.0,
+        brushSize: textBrushSize,
         points,
       });
     }

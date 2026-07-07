@@ -282,6 +282,9 @@ func (app *ReactAppWrapper) getDocument(c *gin.Context) {
 	defer reader.Close()
 
 	log.Infof("getDocument: streaming docid=%s as %s", docid, exportType)
+	c.Header("Cache-Control", "no-store")
+	c.Header("Pragma", "no-cache")
+	c.Header("Expires", "0")
 	if exportType == "rmdoc" {
 		c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s.rmdoc\"", docid))
 		c.DataFromReader(http.StatusOK, -1, "application/octet-stream", reader, nil)
@@ -931,4 +934,3 @@ func (app *ReactAppWrapper) screenshareDeleteRoom(c *gin.Context) {
 	app.roomManager.DeleteAllForUser(uid)
 	c.Status(http.StatusNoContent)
 }
-

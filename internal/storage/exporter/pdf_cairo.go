@@ -320,32 +320,32 @@ func (p *PdfGenerator) drawStroke(surface *cairo.Surface, line rm.Line, scale, p
 	}
 	surface.SetSourceRGB(r, g, b)
 
-	// Set stroke width
-	// Formula from original: line.BrushSize*6.0 - 10.8
-	strokeWidth := float64(line.BrushSize)*6.0 - 10.8
-	if strokeWidth < 0.5 {
-		strokeWidth = 0.5
-	}
-	surface.SetLineWidth(strokeWidth)
-
-	// Set line cap
 	surface.SetLineCap(cairo.LINE_CAP_ROUND)
 	surface.SetLineJoin(cairo.LINE_JOIN_ROUND)
 
-	// Draw path
-	for i, point := range line.Points {
-		x, y := normalized(point, scale)
-		// Convert Y coordinate
-		y = pageHeight - y
+	// Draw each segment with per-point width from Point.Width (device pixels -> PDF points)
+	for i := 1; i < len(line.Points); i++ {
+		prev := line.Points[i-1]
+		cur := line.Points[i]
 
-		if i == 0 {
-			surface.MoveTo(x, y)
-		} else {
-			surface.LineTo(x, y)
+		// Interpolate width between points, convert from device pixels to PDF points
+		w1 := float64(prev.Width) * scale
+		w2 := float64(cur.Width) * scale
+		segWidth := (w1 + w2) / 2.0
+		if segWidth < 0.5 {
+			segWidth = 0.5
 		}
-	}
+		surface.SetLineWidth(segWidth)
 
-	surface.Stroke()
+		x1, y1 := normalized(prev, scale)
+		y1 = pageHeight - y1
+		x2, y2 := normalized(cur, scale)
+		y2 = pageHeight - y2
+
+		surface.MoveTo(x1, y1)
+		surface.LineTo(x2, y2)
+		surface.Stroke()
+	}
 }
 
 func (p *PdfGenerator) drawPageNumber(surface *cairo.Surface, pageNum int, pageWidth, pageHeight float64) {
