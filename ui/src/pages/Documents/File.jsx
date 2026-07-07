@@ -123,7 +123,7 @@ export default function FileViewer({ file, onSelect }) {
 
       {file && (
         <div ref={parent} style={{ height: "95%" }}>
-          <Document file={downloadUrl} onLoadSuccess={onLoadSuccess} options={options}>
+          <Document file={{ url: downloadUrl, withCredentials: true }} onLoadSuccess={onLoadSuccess} options={options}>
             <Page pageNumber={page}
               height={height}
               renderAnnotationLayer={false}
