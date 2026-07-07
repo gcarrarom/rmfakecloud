@@ -283,9 +283,10 @@ func (app *ReactAppWrapper) getDocument(c *gin.Context) {
 
 	if exportType == "rmdoc" {
 		c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s.rmdoc\"", docid))
+		c.DataFromReader(http.StatusOK, -1, "application/octet-stream", reader, nil)
+	} else {
+		c.DataFromReader(http.StatusOK, -1, "application/pdf", reader, nil)
 	}
-
-	c.DataFromReader(http.StatusOK, -1, "application/octet-stream", reader, nil)
 }
 
 func (app *ReactAppWrapper) getDocumentMetadata(c *gin.Context) {

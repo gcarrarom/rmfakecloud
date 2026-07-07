@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, lazy, Suspense } from "react";
+import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { Button, ButtonGroup, Dropdown, Spinner } from "react-bootstrap";
 import Navbar from 'react-bootstrap/Navbar';
 import { FaChevronRight, FaChevronLeft, } from "react-icons/fa6";
@@ -9,7 +9,7 @@ import constants from "../../common/constants";
 import apiservice from "../../services/api.service"
 import NameTag from "../../components/NameTag"
 
-import { pdfjs, Document, Page } from "react-pdf";
+import { Document, Page } from "react-pdf";
 
 const RmdocViewer = lazy(() => import("./RmdocViewer"));
 
@@ -64,12 +64,6 @@ export default function FileViewer({ file, onSelect }) {
       .catch(() => {})
   }
 
-  let options = useMemo(() => {
-    return {
-      worker: new pdfjs.PDFWorker()
-    }
-  }, [pdfjs])
-
   if (viewMode === "rmdoc") {
     return (
       <Suspense fallback={<div className="text-center p-5"><Spinner animation="border" /></div>}>
@@ -123,7 +117,7 @@ export default function FileViewer({ file, onSelect }) {
 
       {file && (
         <div ref={parent} style={{ height: "95%" }}>
-          <Document file={{ url: downloadUrl, withCredentials: true }} onLoadSuccess={onLoadSuccess} options={options}>
+          <Document file={{ url: downloadUrl, withCredentials: true }} onLoadSuccess={onLoadSuccess}>
             <Page pageNumber={page}
               height={height}
               renderAnnotationLayer={false}
