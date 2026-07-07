@@ -218,11 +218,15 @@ func (fs *FileSystemStorage) Export(uid, docid string) (r io.ReadCloser, err err
 				if filepath.Ext(f.EntryName) == storage.ContentFileExt {
 					blob, err := ls.GetReader(f.Hash)
 					if err == nil {
-						contentBytes, _ := io.ReadAll(blob)
+						contentBytes, err := io.ReadAll(blob)
 						blob.Close()
-						err = json.Unmarshal(contentBytes, &contentData)
 						if err != nil {
-							log.Warnf("Failed to unmarshal content.json: %v", err)
+							log.Warnf("Failed to read content.json blob: %v", err)
+						} else {
+							err = json.Unmarshal(contentBytes, &contentData)
+							if err != nil {
+								log.Warnf("Failed to unmarshal content.json: %v", err)
+							}
 						}
 					}
 					break
@@ -549,9 +553,11 @@ func (fs *FileSystemStorage) CreateBlobDocument(uid, filename, parent string, st
 
 	blobStorage := fs.BlobStorage(uid)
 	r, metahash, size, err := createMetadataFile(metadata)
-	blobStorage.Write(metahash, r)
 	if err != nil {
 		return nil, err
+	}
+	if err := blobStorage.Write(metahash, r); err != nil {
+		return nil, fmt.Errorf("failed to write metadata blob: %w", err)
 	}
 
 	payloadEntry := models.NewHashEntry(metahash, docid+storage.MetadataFileExt, size)

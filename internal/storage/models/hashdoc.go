@@ -154,7 +154,7 @@ func (d *HashDoc) readMetadata(fileEntry string, r RemoteStorage) error {
 	}
 	err = json.Unmarshal(content, &metadata)
 	if err != nil {
-		log.Printf("cannot read metadata %s %v", fileEntry, err)
+		return fmt.Errorf("cannot read metadata %s: %w", fileEntry, err)
 	}
 	log.Println("name from metadata: ", metadata.DocumentName)
 	d.MetadataFile = metadata
@@ -178,14 +178,14 @@ func (d *HashDoc) readContent(hash string, r RemoteStorage) error {
 	}
 	err = json.Unmarshal(contentBytes, &contentFile)
 	if err != nil {
-		log.Printf("cannot read content %s %v", hash, err)
+		return fmt.Errorf("cannot read content %s: %w", hash, err)
 	}
 	d.PayloadType = contentFile.FileType
 
 	if len(contentFile.SizeInBytes) > 0 {
 		d.Size, err = strconv.ParseInt(contentFile.SizeInBytes, 10, 64)
 		if err != nil {
-			log.Printf("invalid SizeInBytes: %s %s %v", contentFile.SizeInBytes, hash, err)
+			return fmt.Errorf("invalid SizeInBytes: %s %s: %w", contentFile.SizeInBytes, hash, err)
 		}
 	}
 

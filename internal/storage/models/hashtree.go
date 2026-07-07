@@ -395,7 +395,10 @@ func BuildTree(provider RemoteStorage) (*HashTree, error) {
 }
 
 func buildTreeFromFile(provider RemoteStorage, rootFile io.Reader, rootHash string, gen int64) (*HashTree, error) {
-	entries, _ := parseIndex(rootFile)
+	entries, err := parseIndex(rootFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse root index: %w", err)
+	}
 
 	tree := HashTree{}
 
@@ -403,16 +406,26 @@ func buildTreeFromFile(provider RemoteStorage, rootFile io.Reader, rootHash stri
 	tree.Generation = gen
 
 	for _, e := range entries {
-		r, _ := provider.GetReader(e.Hash)
-		defer r.Close()
+		r, err := provider.GetReader(e.Hash)
+		if err != nil {
+			log.Errorf("Failed to read doc entry %s: %v", e.Hash, err)
+			continue
+		}
 
 		doc := &HashDoc{}
 		doc.HashEntry = *e
 
-		items, _ := parseIndex(r)
+		items, err := parseIndex(r)
+		r.Close()
+		if err != nil {
+			log.Errorf("Failed to parse doc index for %s: %v", e.Hash, err)
+			continue
+		}
 		doc.Files = items
 		for _, i := range items {
-			doc.ReadMetadata(i, provider)
+			if err := doc.ReadMetadata(i, provider); err != nil {
+				log.Warnf("Failed to read metadata for %s: %v", i.EntryName, err)
+			}
 		}
 
 		if doc.Deleted {
