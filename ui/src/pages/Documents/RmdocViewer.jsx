@@ -1,11 +1,11 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button, ButtonGroup, Dropdown, Spinner, Alert } from "react-bootstrap";
 import Navbar from "react-bootstrap/Navbar";
 import { FaChevronRight, FaChevronLeft } from "react-icons/fa6";
 import { AiOutlineDownload } from "react-icons/ai";
 import { BsPencil, BsEye } from "react-icons/bs";
 import JSZip from "jszip";
-import { parse, renderToSvg } from "remarkable-rm";
+import { parse } from "remarkable-rm";
 import apiservice from "../../services/api.service";
 import NameTag from "../../components/NameTag";
 import RmdocEditor from "./RmdocEditor";
@@ -98,20 +98,6 @@ export default function RmdocViewer({ file, onSelect }) {
     };
   }, [data.id]);
 
-  const renderPage = useCallback(
-    (pageIndex) => {
-      if (pageIndex < 0 || pageIndex >= pages.length) return "";
-      const p = pages[pageIndex];
-      if (!p || !p.doc) return "";
-      try {
-        return renderToSvg(p.doc);
-      } catch {
-        return "";
-      }
-    },
-    [pages]
-  );
-
   const onPrev = () => setPage((p) => Math.max(p - 1, 0));
   const onNext = () => setPage((p) => Math.min(p + 1, pages.length - 1));
 
@@ -177,9 +163,6 @@ export default function RmdocViewer({ file, onSelect }) {
       </Alert>
     );
   }
-
-  const svgHtml = renderPage(page);
-
   return (
     <>
       <Navbar style={{ marginLeft: "-12px" }}>
@@ -247,14 +230,14 @@ export default function RmdocViewer({ file, onSelect }) {
             onStrokeChange={onStrokeChange}
           />
         ) : (
-          <div
-            dangerouslySetInnerHTML={{ __html: svgHtml }}
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              padding: "10px",
-            }}
-          />
+          <div style={{ height: "100%" }}>
+            <RmdocEditor
+              pages={pages}
+              currentPage={page}
+              onStrokeChange={onStrokeChange}
+              readOnly
+            />
+          </div>
         )}
       </div>
     </>

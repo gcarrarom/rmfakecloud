@@ -72,7 +72,7 @@ function renderStrokesToCanvas(ctx, doc, scale) {
   ctx.restore();
 }
 
-export default function RmdocEditor({ pages, currentPage, onStrokeChange }) {
+export default function RmdocEditor({ pages, currentPage, onStrokeChange, readOnly = false }) {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
   const textInputRef = useRef(null);
@@ -125,6 +125,7 @@ export default function RmdocEditor({ pages, currentPage, onStrokeChange }) {
   // --- Pen drawing ---
   const startDraw = useCallback(
     (e) => {
+      if (readOnly) return;
       if (tool !== "pen") return;
       e.preventDefault();
       setIsDrawing(true);
@@ -141,6 +142,7 @@ export default function RmdocEditor({ pages, currentPage, onStrokeChange }) {
 
   const moveDraw = useCallback(
     (e) => {
+      if (readOnly) return;
       if (tool !== "pen" || !isDrawing || !currentStroke) return;
       e.preventDefault();
       const { x, y } = getCanvasCoords(e);
@@ -186,6 +188,7 @@ export default function RmdocEditor({ pages, currentPage, onStrokeChange }) {
   );
 
   const endDraw = useCallback(() => {
+    if (readOnly) return;
     if (tool !== "pen" || !isDrawing || !currentStroke) return;
     setIsDrawing(false);
 
@@ -230,6 +233,7 @@ export default function RmdocEditor({ pages, currentPage, onStrokeChange }) {
   // --- Text tool ---
   const handleCanvasClick = useCallback(
     (e) => {
+      if (readOnly) return;
       if (tool !== "text") return;
       const { x, y } = getCanvasCoords(e);
       setTextInputPos({ x, y });
@@ -301,70 +305,72 @@ export default function RmdocEditor({ pages, currentPage, onStrokeChange }) {
 
   return (
     <div ref={containerRef} style={{ height: "100%", overflow: "auto", position: "relative" }}>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          padding: "5px",
-          gap: "8px",
-          flexWrap: "wrap",
-        }}
-      >
-        <ButtonGroup size="sm">
-          <Button
-            variant={tool === "pen" ? "primary" : "outline-secondary"}
-            onClick={() => setTool("pen")}
-          >
-            Pen
-          </Button>
-          <Button
-            variant={tool === "text" ? "primary" : "outline-secondary"}
-            onClick={() => setTool("text")}
-          >
-            Text
-          </Button>
-        </ButtonGroup>
+      {!readOnly && (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            padding: "5px",
+            gap: "8px",
+            flexWrap: "wrap",
+          }}
+        >
+          <ButtonGroup size="sm">
+            <Button
+              variant={tool === "pen" ? "primary" : "outline-secondary"}
+              onClick={() => setTool("pen")}
+            >
+              Pen
+            </Button>
+            <Button
+              variant={tool === "text" ? "primary" : "outline-secondary"}
+              onClick={() => setTool("text")}
+            >
+              Text
+            </Button>
+          </ButtonGroup>
 
-        {tool === "pen" && (
-          <>
-            <ButtonGroup size="sm">
-              {Object.keys(BRUSH_TYPES).map((name) => (
-                <Button
-                  key={name}
-                  variant={penType === name ? "primary" : "outline-secondary"}
-                  onClick={() => setPenType(name)}
-                >
-                  {name}
-                </Button>
-              ))}
-            </ButtonGroup>
-            <ButtonGroup size="sm">
-              {Object.keys(PEN_COLORS).map((name) => (
-                <Button
-                  key={name}
-                  variant={penColor === name ? "dark" : "outline-secondary"}
-                  onClick={() => setPenColor(name)}
-                >
-                  {name}
-                </Button>
-              ))}
-            </ButtonGroup>
-          </>
-        )}
+          {tool === "pen" && (
+            <>
+              <ButtonGroup size="sm">
+                {Object.keys(BRUSH_TYPES).map((name) => (
+                  <Button
+                    key={name}
+                    variant={penType === name ? "primary" : "outline-secondary"}
+                    onClick={() => setPenType(name)}
+                  >
+                    {name}
+                  </Button>
+                ))}
+              </ButtonGroup>
+              <ButtonGroup size="sm">
+                {Object.keys(PEN_COLORS).map((name) => (
+                  <Button
+                    key={name}
+                    variant={penColor === name ? "dark" : "outline-secondary"}
+                    onClick={() => setPenColor(name)}
+                  >
+                    {name}
+                  </Button>
+                ))}
+              </ButtonGroup>
+            </>
+          )}
 
-        {tool === "text" && (
-          <Form.Control
-            size="sm"
-            type="number"
-            value={fontSize}
-            onChange={(e) => setFontSize(Number(e.target.value))}
-            min={8}
-            max={200}
-            style={{ width: 70 }}
-            title="Font size"
-          />
-        )}
-      </div>
+          {tool === "text" && (
+            <Form.Control
+              size="sm"
+              type="number"
+              value={fontSize}
+              onChange={(e) => setFontSize(Number(e.target.value))}
+              min={8}
+              max={200}
+              style={{ width: 70 }}
+              title="Font size"
+            />
+          )}
+        </div>
+      )}
 
       <div style={{ display: "flex", justifyContent: "center", position: "relative" }}>
         <canvas
@@ -373,7 +379,7 @@ export default function RmdocEditor({ pages, currentPage, onStrokeChange }) {
           height={CANVAS_H * scale}
           style={{
             border: "1px solid #ccc",
-            cursor: tool === "text" ? "text" : "crosshair",
+              cursor: readOnly ? "default" : tool === "text" ? "text" : "crosshair",
             touchAction: "none",
           }}
           onMouseDown={handleCanvasEvent}
