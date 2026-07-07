@@ -48,7 +48,21 @@ export default function RmdocViewer({ file, onSelect }) {
 
         const parsedPages = [];
 
-        for (const uuid of content.pages || []) {
+        let pageUuids = content.pages || [];
+
+        if (pageUuids.length === 0) {
+          const allFiles = Object.keys(zip.files);
+          const rmFiles = allFiles.filter((f) => {
+            const base = f.split("/").pop();
+            return base.endsWith(".rm") && !base.startsWith(".");
+          });
+          pageUuids = rmFiles.map((f) => {
+            const base = f.split("/").pop();
+            return base.replace(/\.rm$/, "");
+          });
+        }
+
+        for (const uuid of pageUuids) {
           const rmEntry = Object.keys(zip.files).find((f) => {
             const base = f.split("/").pop();
             return base === uuid + ".rm" || base === uuid;
