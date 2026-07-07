@@ -24,6 +24,7 @@ export default function DocumentList() {
   const [initialSelectionSet, setInitialSelectionSet] = useState(false);
   const [treeHeight, setTreeHeight] = useState(700);
   const [isMobile, setIsMobile] = useState(() => window.matchMedia("(max-width: 767.98px)").matches);
+  const [viewportHeight, setViewportHeight] = useState(() => window.innerHeight);
   const [showBrowserDrawer, setShowBrowserDrawer] = useState(false);
 
   const { itemId } = useParams();
@@ -34,23 +35,48 @@ export default function DocumentList() {
   const treeContainerRef = useRef(null);
   const lastSelectedId = useRef(null);
 
+  const createInternalRootNode = () => ({
+    id: '__REACT_ARBORIST_INTERNAL_ROOT__',
+    data: { id: '__REACT_ARBORIST_INTERNAL_ROOT__', name: '' },
+    isLeaf: false,
+    parent: null,
+  });
+
+  const createPseudoNode = (item, parent = null) => {
+    const node = {
+      id: item.id,
+      data: item,
+      isLeaf: !item.isFolder,
+      children: [],
+      parent,
+      isRoot: item.id === 'root' || item.id === 'trash',
+      toggle: () => {},
+    };
+
+    node.children = (item.children || []).map((child) => createPseudoNode(child, node));
+
+    return node;
+  };
+
   useEffect(() => {
     const mediaQuery = window.matchMedia("(max-width: 767.98px)");
     const updateIsMobile = (event) => {
       setIsMobile(event.matches);
     };
+    const updateViewportHeight = () => {
+      setViewportHeight(window.innerHeight);
+    };
 
     setIsMobile(mediaQuery.matches);
+    updateViewportHeight();
     mediaQuery.addEventListener("change", updateIsMobile);
+    window.addEventListener("resize", updateViewportHeight);
 
-    return () => mediaQuery.removeEventListener("change", updateIsMobile);
+    return () => {
+      mediaQuery.removeEventListener("change", updateIsMobile);
+      window.removeEventListener("resize", updateViewportHeight);
+    };
   }, []);
-
-  useEffect(() => {
-    if (isMobile && selected) {
-      setShowBrowserDrawer(false);
-    }
-  }, [isMobile, selected]);
 
   useEffect(() => {
     lastSelectedId.current = selected?.id || null;
@@ -81,6 +107,10 @@ export default function DocumentList() {
     setSelected(node);
     toggleNode(node);
 
+    if (isMobile) {
+      setShowBrowserDrawer(false);
+    }
+
     // Update URL with selected item ID
     if (node && node.id) {
       // Don't add root and trash to URL, keep as /documents
@@ -102,16 +132,19 @@ export default function DocumentList() {
       !initialSelectionSet &&
       !itemId &&
       selected === null &&
-      treeRef.current &&
-      treeRef.current.root &&
-      treeRef.current.root.children[0]
+      entries.length > 0
     ) {
-      setSelected(treeRef.current.root.children[0]);
+      const firstEntry = entries[0];
+      setSelected(createPseudoNode(firstEntry, createInternalRootNode()));
       setInitialSelectionSet(true);
     }
   }, [entries, selected, initialSelectionSet, itemId]);
 
   useEffect(() => {
+    if (isMobile) {
+      return undefined;
+    }
+
     const resizeObserver = new ResizeObserver((event) => {
       setTreeHeight(event[0].contentBoxSize[0].blockSize);
     });
@@ -123,7 +156,9 @@ export default function DocumentList() {
     return () => {
       resizeObserver.disconnect();
     };
-  }, []);
+  }, [isMobile]);
+
+  const drawerTreeHeight = Math.max(viewportHeight - 220, 320);
 
 	useEffect(() => {
 		const loadDocs = async () => {
@@ -185,12 +220,7 @@ export default function DocumentList() {
       }
     } else {
       // This is root or trash - add the internal react-arborist root above it
-      parentNode.parent = {
-        id: '__REACT_ARBORIST_INTERNAL_ROOT__',
-        data: { id: '__REACT_ARBORIST_INTERNAL_ROOT__', name: '' },
-        isLeaf: false,
-        parent: null,
-      };
+      parentNode.parent = createInternalRootNode();
     }
 
     return parentNode;
@@ -218,18 +248,7 @@ export default function DocumentList() {
     // Create a pseudo-node object that matches what onSelect expects
     // React-arborist wraps the data, so the node has both top-level properties
     // and a 'data' property containing the actual item
-    const pseudoNode = {
-      id: foundItem.id,
-      data: foundItem,
-      isLeaf: !foundItem.isFolder,
-      children: (foundItem.children || []).map(child => ({
-        id: child.id,
-        data: child,
-        isLeaf: !child.isFolder,
-      })),
-      parent: parentItem ? buildParentChain(parentItem) : null,
-      isRoot: foundItem.id === 'root' || foundItem.id === 'trash',
-    };
+    const pseudoNode = createPseudoNode(foundItem, parentItem ? buildParentChain(parentItem) : null);
 
     // Set the selection directly
     setSelected(pseudoNode);
@@ -256,11 +275,11 @@ export default function DocumentList() {
             {selected && <div className={styles.mobileSelectionLabel}>{selected.data?.name}</div>}
           </div>
         )}
-        <Row className={styles.contentRow}>
-          <Col md={4} xs={12} className={`${styles.sidebarColumn} ${isMobile ? styles.mobileOnlyDrawer : ""}`}>
-            <Navbar style={{flexShrink: 0}}>
-              <div className={`${styles.stretch} ${styles.userid}`}>{user.UserID}</div>
-              <Button variant="outline" onClick={() => { setShowSearch(!showSearch); setTerm("") }}><BsSearch/></Button>
+          <Row className={styles.contentRow}>
+          {!isMobile && <Col md={4} xs={12} className={styles.sidebarColumn}>
+             <Navbar style={{flexShrink: 0}}>
+               <div className={`${styles.stretch} ${styles.userid}`}>{user.UserID}</div>
+               <Button variant="outline" onClick={() => { setShowSearch(!showSearch); setTerm("") }}><BsSearch/></Button>
             </Navbar>
 
             {showSearch && <div style={{flexShrink: 0}}>
@@ -273,10 +292,10 @@ export default function DocumentList() {
               </InputGroup>
             </div>}
 
-            <div ref={treeContainerRef} className={styles.treeContainer}>
-              <DocumentTree selection={selected} onSelect={onSelect} treeRef={treeRef} term={term} entries={entries} height={Math.max(treeHeight, isMobile ? 320 : 700)} />
-            </div>
-          </Col>
+             <div ref={treeContainerRef} className={styles.treeContainer}>
+               <DocumentTree selection={selected} onSelect={onSelect} treeRef={treeRef} term={term} entries={entries} height={Math.max(treeHeight, isMobile ? 320 : 700)} />
+             </div>
+          </Col>}
           <Col md={8} xs={12} className={styles.detailColumn}>
             <div className={styles.detailViewport}>
               {selected && selected.isLeaf && <File file={selected} onSelect={onSelect} />}
@@ -284,7 +303,7 @@ export default function DocumentList() {
             </div>
           </Col>
         </Row>
-        <Offcanvas show={showBrowserDrawer} onHide={() => setShowBrowserDrawer(false)} placement="start" responsive="md" className={styles.documentDrawer}>
+        <Offcanvas show={isMobile && showBrowserDrawer} onHide={() => setShowBrowserDrawer(false)} placement="start" className={styles.documentDrawer}>
           <Offcanvas.Header closeButton>
             <Offcanvas.Title>Documents</Offcanvas.Title>
           </Offcanvas.Header>
@@ -305,7 +324,7 @@ export default function DocumentList() {
             </div>}
 
             <div className={styles.treeContainer}>
-              <DocumentTree selection={selected} onSelect={onSelect} treeRef={treeRef} term={term} entries={entries} height={Math.max(treeHeight, 420)} />
+              <DocumentTree selection={selected} onSelect={onSelect} treeRef={treeRef} term={term} entries={entries} height={drawerTreeHeight} />
             </div>
           </Offcanvas.Body>
         </Offcanvas>

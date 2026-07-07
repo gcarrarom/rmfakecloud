@@ -166,7 +166,7 @@ export default function RmdocViewer({ file, onSelect }) {
   }
   return (
     <div className={styles.viewerShell}>
-      <Navbar style={{ marginLeft: "-12px" }}>
+      <Navbar className={styles.breadcrumbBar}>
         {file && <NameTag node={file} onSelect={onSelect} />}
       </Navbar>
 

@@ -110,12 +110,6 @@ code {
     background-color: $background1;
 }
 
-@media (max-width: 768px) {
-  .documents-tree {
-    max-height: 25vh !important;
-  }
-}
-
 .container-fluid {
   box-sizing: border-box;
   margin: 0 50px;

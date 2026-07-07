@@ -64,7 +64,7 @@ export default function Folder({ selection, onSelect, onUpdate }) {
   }
   return (
     <>
-      <Navbar style={{ marginLeft: '-12px' }}>
+      <Navbar className={styles.breadcrumbBar}>
         { folder && (<div><NameTag node={folder} onSelect={onSelect} /></div>) }
       </Navbar>
 

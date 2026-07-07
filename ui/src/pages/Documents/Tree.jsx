@@ -7,6 +7,9 @@ const DocumentTree = ({ selection, onSelect, treeRef, term, entries, height = 70
   const onTreeSelect = (sel) => {
     if (sel.length > 0) {
       const node = sel[0];
+      if (node.id === selection?.id) {
+        return;
+      }
       onSelect(node);
     }
   }

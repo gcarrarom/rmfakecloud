@@ -184,6 +184,36 @@ export default function FileListViewer({ listStyle, files, onSelect, counter, se
     );
   });
 
+  const mobileGridItems = table.getRowModel().rows.map((row) => {
+    const item = row.original;
+    const isSelected = selectedIds.includes(item.id);
+    const secondaryText = item.isLeaf
+      ? formatBytes(item.data.size)
+      : `${item.children?.length || 0} items`;
+
+    return (
+      <div key={row.id} className={styles.mobileGridCard} onClick={() => onClickItem(item)}>
+        <label
+          className={styles.mobileGridToggle}
+          onClick={(event) => event.stopPropagation()}
+        >
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={() => onSelectItem && onSelectItem(item.id)}
+          />
+        </label>
+        <div className={styles.mobileGridIcon}>
+          <FileIcon file={item.data} />
+        </div>
+        <div className={`${styles.mobileGridName} ${isFolderClassName(item)}`}>
+          {item.data.name}
+        </div>
+        <div className={styles.mobileGridMeta}>{secondaryText}</div>
+      </div>
+    );
+  });
+
   const gridFolderItems = files.filter(file => !file.isLeaf).map(file =>
     <div className="filegrid-folder-item" key={file.id}>
       <input
@@ -228,6 +258,15 @@ export default function FileListViewer({ listStyle, files, onSelect, counter, se
           <div style={{ height: '0.75em', width: '100%' }}></div>
           <div className={styles.mobileFileList}>
             {mobileListItems}
+          </div>
+        </div>
+      )}
+
+      {files && isMobile && listStyle === "grid" && (
+        <div>
+          <div style={{ height: '0.75em', width: '100%' }}></div>
+          <div className={styles.mobileFileGrid}>
+            {mobileGridItems}
           </div>
         </div>
       )}
@@ -295,7 +334,7 @@ export default function FileListViewer({ listStyle, files, onSelect, counter, se
         </div>
       )}
 
-      {files && (listStyle === "grid") && (
+      {files && !isMobile && (listStyle === "grid") && (
         <div>
           <div style={{ height: '1em', width: '100%' }}></div>
           <div className="filegrid">

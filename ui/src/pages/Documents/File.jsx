@@ -118,7 +118,7 @@ export default function FileViewer({ file, onSelect }) {
 
   return (
     <div className={styles.viewerShell}>
-      <Navbar style={{ marginLeft: '-12px' }}>
+      <Navbar className={styles.breadcrumbBar}>
         {file && (<div><NameTag node={file} onSelect={onSelect} /></div>)}
       </Navbar>
 
