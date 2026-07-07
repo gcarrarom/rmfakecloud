@@ -1,4 +1,7 @@
+packages:
+  - "."
+
 allowBuilds:
-  '@swc/core': true
+  "@swc/core": true
   canvas: true
   esbuild: true
