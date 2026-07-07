@@ -11,7 +11,7 @@ GOFILES += $(ASSETS)
 UIFILES := $(shell find ui/src)
 UIFILES += $(shell find ui/public)
 UIFILES += ui/package.json
-TARGETS := $(addprefix $(OUT_DIR)/$(BINARY)-, x64 win64 docker)
+TARGETS := $(addprefix $(OUT_DIR)/$(BINARY)-, x64 docker)
 PNPM	= cd ui; pnpm
 
 .PHONY: all run runui clean test testgo testui build-cairo
@@ -24,9 +24,6 @@ all: $(TARGETS)
 
 $(OUT_DIR)/$(BINARY)-x64:$(GOFILES)
 	GOOS=linux $(BUILD)
-
-$(OUT_DIR)/$(BINARY)-win64:$(GOFILES)
-	GOOS=windows $(BUILD)
 
 $(OUT_DIR)/$(BINARY)-docker:$(GOFILES)
 	$(BUILD)
