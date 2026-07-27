@@ -1,3 +1,9 @@
+# 0.0.29
+
+## Bug fixes
+
+- Preserve page order in PDF previews and downloads for v6 documents.
+
 # 0.0.25
 
 ## Features

@@ -11,6 +11,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -247,33 +248,20 @@ func (fs *FileSystemStorage) Export(uid, docid string) (r io.ReadCloser, err err
 
 			log.Debugf("Built page map with %d entries", len(pageMap))
 
-			// Extract all pages in order
-			var pageHashes []string
+			// content.json is authoritative when it contains page IDs. For older
+			// documents without that list, order the page filenames explicitly;
+			// reversing doc.Files is incorrect for numeric page names (0.rm, 1.rm...).
+			pageHashes := orderedV6PageHashes(doc.Files, contentData.Pages)
 			if len(contentData.Pages) > 0 {
-				// Use pages from content.json in the correct order
 				for _, pageName := range contentData.Pages {
-					if hash, ok := pageMap[pageName]; ok {
-						pageHashes = append(pageHashes, hash)
+					if hash, ok := pageMap[normalizePageName(pageName)]; ok {
 						log.Debugf("Found page %s -> %s", pageName, hash)
 					} else {
 						log.Warnf("Page %s not found in pageMap", pageName)
 					}
 				}
 			} else {
-				// No pages in content.json, use order from doc.Files (index file order)
-				// doc.Files is sorted alphabetically which reverses page order, so we reverse it back
-				log.Warn("content.json has no pages array, using .rm files in reversed index order")
-				var tempHashes []string
-				for _, f := range doc.Files {
-					if filepath.Ext(f.EntryName) == storage.RmFileExt {
-						tempHashes = append(tempHashes, f.Hash)
-					}
-				}
-				// Reverse the order to get correct page sequence
-				for i := len(tempHashes) - 1; i >= 0; i-- {
-					pageHashes = append(pageHashes, tempHashes[i])
-					log.Infof("Using .rm file in reversed order: page %d", len(tempHashes)-i)
-				}
+				log.Warn("content.json has no pages array, ordering .rm files by page name")
 			}
 
 			if len(pageHashes) == 0 {
@@ -336,6 +324,51 @@ func (fs *FileSystemStorage) Export(uid, docid string) (r io.ReadCloser, err err
 	}
 
 	return reader, err
+}
+
+// orderedV6PageHashes returns page hashes in document order. The content page
+// list is the only reliable order for UUID-named pages; the filename fallback
+// handles older documents whose pages use numeric names.
+func orderedV6PageHashes(files []*models.HashEntry, contentPages []string) []string {
+	pageMap := make(map[string]string)
+	pageNames := make([]string, 0)
+	for _, f := range files {
+		if filepath.Ext(f.EntryName) != storage.RmFileExt {
+			continue
+		}
+		name := normalizePageName(f.EntryName)
+		pageMap[name] = f.Hash
+		pageNames = append(pageNames, name)
+	}
+
+	if len(contentPages) > 0 {
+		pageHashes := make([]string, 0, len(contentPages))
+		for _, name := range contentPages {
+			if hash, ok := pageMap[normalizePageName(name)]; ok {
+				pageHashes = append(pageHashes, hash)
+			}
+		}
+		return pageHashes
+	}
+
+	sort.SliceStable(pageNames, func(i, j int) bool {
+		left, leftErr := strconv.Atoi(pageNames[i])
+		right, rightErr := strconv.Atoi(pageNames[j])
+		if leftErr == nil && rightErr == nil {
+			return left < right
+		}
+		return pageNames[i] < pageNames[j]
+	})
+	pageHashes := make([]string, 0, len(pageNames))
+	for _, name := range pageNames {
+		pageHashes = append(pageHashes, pageMap[name])
+	}
+	return pageHashes
+}
+
+func normalizePageName(name string) string {
+	name = filepath.Base(name)
+	return strings.TrimSuffix(name, storage.RmFileExt)
 }
 
 // UpdateBlobDocument updates metadata
@@ -1038,4 +1071,3 @@ func generationFromFileSize(size int64) int64 {
 	//time + 1 space + 64 hash + 1 newline
 	return size / 86
 }
-
