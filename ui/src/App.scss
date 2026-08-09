@@ -287,6 +287,11 @@ main h2 {
     overflow: auto;
   }
 
+  // Let mobile document pages grow so the body can scroll through all files.
+  .app-content {
+    overflow: visible !important;
+  }
+
   #root {
     min-height: 100%;
   }

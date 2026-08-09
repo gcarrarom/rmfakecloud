@@ -39,7 +39,7 @@ export default function App() {
           <div style={{display: "flex", flexDirection: "column", height: "100%"}}>
             <Navigationbar />
             <PasscodeResets />
-            <div style={{flex: "1 1 auto", minHeight: 0, overflow: "hidden"}}>
+            <div className="app-content" style={{flex: "1 1 auto", minHeight: 0, overflow: "hidden"}}>
               <Switch>
                 <PrivateRoute exact path="/" component={Home} />
                 <PrivateRoute path="/documents/:itemId?" component={Documents} />

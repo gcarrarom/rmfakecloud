@@ -1,9 +1,10 @@
 # Unreleased
 
-# 0.0.33
+# 0.0.34
 
 ## Bug fixes
 
+- Allow mobile document file lists to scroll through all files.
 - Allow collapsed document folders to be reopened by clicking the selected folder.
 
 # 0.0.32
