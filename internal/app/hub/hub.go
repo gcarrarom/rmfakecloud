@@ -14,6 +14,12 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+const (
+	wsWriteWait = 10 * time.Second
+	wsPongWait  = 60 * time.Second
+	wsPingWait  = (wsPongWait * 9) / 10
+)
+
 type notification struct {
 	msg  *messages.WsMessage
 	uid  string
@@ -237,6 +243,10 @@ type wsClient struct {
 
 func (c *wsClient) readMessages(done chan<- struct{}, ws *websocket.Conn) {
 	defer ws.Close()
+	ws.SetReadDeadline(time.Now().Add(wsPongWait))
+	ws.SetPongHandler(func(string) error {
+		return ws.SetReadDeadline(time.Now().Add(wsPongWait))
+	})
 
 	for {
 		_, p, err := ws.ReadMessage()
@@ -254,6 +264,8 @@ func (c *wsClient) readMessages(done chan<- struct{}, ws *websocket.Conn) {
 }
 func (c *wsClient) writeMessages(done chan<- struct{}, ws *websocket.Conn) {
 	defer ws.Close()
+	pingTicker := time.NewTicker(wsPingWait)
+	defer pingTicker.Stop()
 
 outer:
 	for {
@@ -263,13 +275,19 @@ outer:
 				break outer
 			}
 			log.Debugln("sending notification to:", c.deviceID)
-			ws.SetWriteDeadline(time.Now().Add(10 * time.Second))
+			ws.SetWriteDeadline(time.Now().Add(wsWriteWait))
 			err := ws.WriteJSON(m)
 			if err != nil {
 				log.Warn("Cant write to ws ", err)
 				break outer
 			}
 			log.Debugln("notification sent: ", c.deviceID)
+		case <-pingTicker.C:
+			ws.SetWriteDeadline(time.Now().Add(wsWriteWait))
+			if err := ws.WriteControl(websocket.PingMessage, nil, time.Now().Add(wsWriteWait)); err != nil {
+				log.Warn("Cant ping ws ", err)
+				break outer
+			}
 		case <-c.done:
 			break outer
 		}

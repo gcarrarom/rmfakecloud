@@ -1,3 +1,9 @@
+# 0.0.30
+
+## Features
+
+- Add WebSocket ping/pong keepalive and stale-session detection.
+
 # 0.0.29
 
 ## Bug fixes
