@@ -1,5 +1,11 @@
 # Unreleased
 
+# 0.0.33
+
+## Bug fixes
+
+- Allow collapsed document folders to be reopened by clicking the selected folder.
+
 # 0.0.32
 
 ## Bug fixes
