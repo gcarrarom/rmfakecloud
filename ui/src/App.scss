@@ -78,6 +78,11 @@ html, body {
     background-color: $background2;
 }
 
+body.resizing-document-sidebar {
+  cursor: col-resize;
+  user-select: none;
+}
+
 #root {
     height: 100%;
 }

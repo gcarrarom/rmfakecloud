@@ -28,14 +28,54 @@
 .contentRow {
     flex: 1 1 auto;
     min-height: 0;
+    flex-wrap: nowrap;
 }
 
-.sidebarColumn,
-.detailColumn {
+.sidebarColumn {
     display: flex;
     flex-direction: column;
     height: 100%;
     min-height: 0;
+    min-width: 220px;
+    max-width: 520px;
+    position: relative;
+    flex: 0 0 280px;
+}
+
+.detailColumn {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    min-width: 0;
+    width: 0;
+}
+
+.sidebarResizeHandle {
+    position: absolute;
+    z-index: 2;
+    top: 0;
+    right: -6px;
+    bottom: 0;
+    width: 12px;
+    cursor: col-resize;
+}
+
+.sidebarResizeHandle::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 5px;
+    width: 2px;
+    background-color: transparent;
+    transition: background-color 120ms ease;
+}
+
+.sidebarResizeHandle:hover::after,
+.sidebarResizeHandle:focus-visible::after {
+    background-color: $foreground2;
 }
 
 .detailViewport {
@@ -350,11 +390,20 @@
         flex: 0 0 auto;
         min-height: auto;
         row-gap: 0.75rem;
+        flex-wrap: wrap;
     }
 
     .sidebarColumn,
     .detailColumn {
         height: auto;
+        width: 100%;
+        min-width: 0;
+        max-width: none;
+        flex-basis: auto !important;
+    }
+
+    .sidebarResizeHandle {
+        display: none;
     }
 
     .mobilePaneTabs {

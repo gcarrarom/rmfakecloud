@@ -1,3 +1,16 @@
+# Unreleased
+
+# 0.0.31
+
+## Bug fixes
+
+- Improve desktop document browsing with a compact, resizable sidebar and correctly sized tree.
+
+## Features
+
+- Normalize ICE server configuration for tablet WebRTC compatibility.
+- Add desktop client setup documentation for hosts-file and RMHook-based setups.
+
 # 0.0.30
 
 ## Features

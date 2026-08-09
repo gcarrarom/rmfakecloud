@@ -22,7 +22,9 @@ export default function DocumentList() {
   const [counter, setCounter] = useState(0);
   const [entries, setEntries] = useState([])
   const [initialSelectionSet, setInitialSelectionSet] = useState(false);
-  const [treeHeight, setTreeHeight] = useState(700);
+  const [treeHeight, setTreeHeight] = useState(320);
+  const [sidebarWidth, setSidebarWidth] = useState(280);
+  const [isResizingSidebar, setIsResizingSidebar] = useState(false);
   const [isMobile, setIsMobile] = useState(() => window.matchMedia("(max-width: 767.98px)").matches);
   const [viewportHeight, setViewportHeight] = useState(() => window.innerHeight);
   const [showBrowserDrawer, setShowBrowserDrawer] = useState(false);
@@ -33,6 +35,7 @@ export default function DocumentList() {
 
   const treeRef = useRef(null);
   const treeContainerRef = useRef(null);
+  const contentRowRef = useRef(null);
   const lastSelectedId = useRef(null);
 
   const createInternalRootNode = () => ({
@@ -158,6 +161,29 @@ export default function DocumentList() {
     };
   }, [isMobile]);
 
+  useEffect(() => {
+    if (!isResizingSidebar) {
+      return undefined;
+    }
+
+    const updateSidebarWidth = (event) => {
+      const maxWidth = Math.min(520, window.innerWidth - 360);
+      const rowLeft = contentRowRef.current?.getBoundingClientRect().left || 0;
+      setSidebarWidth(Math.min(Math.max(event.clientX - rowLeft, 220), maxWidth));
+    };
+    const stopResizing = () => setIsResizingSidebar(false);
+
+    document.addEventListener("pointermove", updateSidebarWidth);
+    document.addEventListener("pointerup", stopResizing);
+    document.body.classList.add("resizing-document-sidebar");
+
+    return () => {
+      document.removeEventListener("pointermove", updateSidebarWidth);
+      document.removeEventListener("pointerup", stopResizing);
+      document.body.classList.remove("resizing-document-sidebar");
+    };
+  }, [isResizingSidebar]);
+
   const drawerTreeHeight = Math.max(viewportHeight - 220, 320);
 
 	useEffect(() => {
@@ -275,8 +301,8 @@ export default function DocumentList() {
             {selected && <div className={styles.mobileSelectionLabel}>{selected.data?.name}</div>}
           </div>
         )}
-          <Row className={styles.contentRow}>
-          {!isMobile && <Col md={4} xs={12} className={styles.sidebarColumn}>
+          <Row ref={contentRowRef} className={styles.contentRow}>
+          {!isMobile && <Col xs={12} className={styles.sidebarColumn} style={{ flexBasis: `${sidebarWidth}px` }}>
              <Navbar style={{flexShrink: 0}}>
                <div className={`${styles.stretch} ${styles.userid}`}>{user.UserID}</div>
                <Button variant="outline" onClick={() => { setShowSearch(!showSearch); setTerm("") }}><BsSearch/></Button>
@@ -293,9 +319,29 @@ export default function DocumentList() {
             </div>}
 
              <div ref={treeContainerRef} className={styles.treeContainer}>
-               <DocumentTree selection={selected} onSelect={onSelect} treeRef={treeRef} term={term} entries={entries} height={Math.max(treeHeight, isMobile ? 320 : 700)} />
-             </div>
-          </Col>}
+                <DocumentTree selection={selected} onSelect={onSelect} treeRef={treeRef} term={term} entries={entries} height={Math.max(treeHeight, 320)} />
+              </div>
+              <div
+                className={styles.sidebarResizeHandle}
+                role="separator"
+                aria-label="Resize document sidebar"
+                aria-orientation="vertical"
+                aria-valuemin="220"
+                aria-valuemax="520"
+                aria-valuenow={sidebarWidth}
+                tabIndex={0}
+                onPointerDown={(event) => {
+                  event.preventDefault();
+                  setIsResizingSidebar(true);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+                  event.preventDefault();
+                  const direction = event.key === "ArrowRight" ? 20 : -20;
+                  setSidebarWidth((width) => Math.min(Math.max(width + direction, 220), 520));
+                }}
+              />
+           </Col>}
           <Col md={8} xs={12} className={styles.detailColumn}>
             <div className={styles.detailViewport}>
               {selected && selected.isLeaf && <File file={selected} onSelect={onSelect} />}
