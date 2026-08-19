@@ -1,3 +1,10 @@
+# 0.0.47
+
+## Bug fixes
+
+- Apply EPUB alignment and typography changes in place without reloading the chapter or resetting the current page.
+- Wait until EPUB page input is committed with Enter or blur before navigating.
+
 # 0.0.46
 
 ## Bug fixes
