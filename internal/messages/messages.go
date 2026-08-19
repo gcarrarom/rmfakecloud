@@ -93,6 +93,7 @@ type RawMetadata struct {
 	Type              common.EntryType `json:"Type"`
 	VissibleName      string           `json:"VissibleName"`
 	CurrentPage       int              `json:"CurrentPage"`
+	WebReadingPage    int              `json:"WebReadingPage,omitempty"`
 	Bookmarked        bool             `json:"Bookmarked"`
 	Parent            string           `json:"Parent"`
 }

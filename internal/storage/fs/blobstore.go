@@ -473,6 +473,7 @@ func (fs *FileSystemStorage) UpdateBlobDocumentReadingPosition(uid, docID string
 		}
 		hashDoc.LastOpenedPage = page
 		hashDoc.LastOpened = models.FromTime(time.Now())
+		hashDoc.WebReadingPage = page + 1
 		metadataHash, metadataReader, err := hashDoc.MetadataReader()
 		if err != nil {
 			return err

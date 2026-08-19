@@ -43,7 +43,9 @@ func (b *backend15) GetReadingProgress(uid, docID string) (*viewmodel.ReadingPro
 		return nil, err
 	}
 	currentPage := 0
-	if doc.LastOpened != "" {
+	if doc.WebReadingPage > 0 {
+		currentPage = doc.WebReadingPage
+	} else if doc.LastOpened != "" {
 		currentPage = doc.LastOpenedPage + 1
 	}
 	return &viewmodel.ReadingProgress{CurrentPage: currentPage, PageCount: doc.PageCount}, nil
@@ -54,7 +56,7 @@ func (b *backend15) ExportEpubResource(uid, docID, resourcePath string) (io.Read
 }
 
 func (b *backend15) UpdateReadingProgress(uid, docID string, page int) error {
-	if err := b.blobHandler.UpdateBlobDocumentReadingPosition(uid, docID, page); err != nil {
+	if err := b.blobHandler.UpdateBlobDocumentReadingPosition(uid, docID, page-1); err != nil {
 		return err
 	}
 	b.Sync(uid)

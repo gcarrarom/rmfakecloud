@@ -97,7 +97,9 @@ func DocTreeFromHashTree(tree *models.HashTree) *DocumentTree {
 			log.Warn("incorrect lastmodified for: ", d.DocumentName, " value: ", d.LastModified, " ", err)
 		}
 		currentPage := 0
-		if d.LastOpened != "" {
+		if d.WebReadingPage > 0 {
+			currentPage = d.WebReadingPage
+		} else if d.LastOpened != "" {
 			currentPage = d.LastOpenedPage + 1
 		}
 		docs = append(docs, &InternalDoc{

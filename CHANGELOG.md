@@ -7,6 +7,11 @@
 - Read EPUB chapters on demand in the web reader instead of converting or downloading the entire book.
 - Broadcast web reading-position updates to connected tablet clients.
 
+## Bug fixes
+
+- Restore EPUBs to the same position shown in the document list.
+- Add web controls for EPUB chapter navigation and typography.
+
 # 0.0.35
 
 ## Features

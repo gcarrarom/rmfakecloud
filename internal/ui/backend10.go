@@ -77,7 +77,7 @@ func (d *backend10) GetDocumentTree(uid string) (tree *viewmodel.DocumentTree, e
 			Type:         d.Type,
 			FileType:     "TODO",
 			LastModified: lastMod,
-			CurrentPage:  pageForUI(d.CurrentPage),
+			CurrentPage:  pageForUI(d.CurrentPage, d.WebReadingPage),
 		})
 
 	}
@@ -97,7 +97,7 @@ func (d *backend10) GetReadingProgress(uid, docID string) (*viewmodel.ReadingPro
 	if err != nil {
 		return nil, err
 	}
-	return &viewmodel.ReadingProgress{CurrentPage: pageForUI(metadata.CurrentPage)}, nil
+	return &viewmodel.ReadingProgress{CurrentPage: pageForUI(metadata.CurrentPage, metadata.WebReadingPage)}, nil
 }
 
 func (d *backend10) ExportEpubResource(uid, docID, resourcePath string) (io.ReadCloser, string, error) {
@@ -110,6 +110,7 @@ func (d *backend10) UpdateReadingProgress(uid, docID string, page int) error {
 		return err
 	}
 	metadata.CurrentPage = page - 1
+	metadata.WebReadingPage = page
 	if err := d.documentHandler.UpdateMetadata(uid, metadata); err != nil {
 		return err
 	}
@@ -123,7 +124,10 @@ func (d *backend10) UpdateReadingProgress(uid, docID string, page int) error {
 	return nil
 }
 
-func pageForUI(page int) int {
+func pageForUI(page, webPage int) int {
+	if webPage > 0 {
+		return webPage
+	}
 	if page <= 0 {
 		return 0
 	}
