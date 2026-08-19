@@ -1,3 +1,9 @@
+# 0.0.46
+
+## Bug fixes
+
+- Preserve the current EPUB page and page counter when changing reader alignment or typography, without briefly showing page one during reflow.
+
 # 0.0.43
 
 ## Bug fixes

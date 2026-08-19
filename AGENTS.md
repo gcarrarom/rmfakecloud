@@ -15,6 +15,8 @@ Use the repository release workflow. Do not invent a version, run a release tool
 
 The workflow is deliberately manual. Normal pushes must not create releases. It validates semantic version format, matches the first changelog heading, rejects existing tags, creates the exact requested tag, and builds from that tag. Never restore a push trigger or automatic version incrementing.
 
+A code commit pushed to `master` is not a release. For every requested release, do not stop after pushing code or the changelog: dispatch `release.yml`, monitor its jobs, and verify the remote tag, GitHub release, release assets, Helm chart, and both container tags (`latest` and the numeric release version).
+
 If GitHub CLI authentication is unavailable, stop after preparing and pushing the changelog commit and tell the user that the workflow must be dispatched by an authenticated user.
 
 Do not rewrite or delete historical release tags without explicit user approval.

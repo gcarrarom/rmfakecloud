@@ -12,3 +12,5 @@ Releases are manual and use one version source: the first version heading in `CH
 4. Watch the workflow and verify the release artifacts.
 
 The workflow refuses to run when the requested version does not match the first changelog heading or when its Git tag already exists. It creates exactly that tag and GitHub release, then builds the binaries, Helm chart, and container from that exact tag. It does not calculate or increment versions automatically.
+
+Pushing `master` alone does not create a release. A release is complete only after the dispatched workflow succeeds and the tag, GitHub release assets, Helm chart, and container tags (`latest` and the numeric version) have been verified.
