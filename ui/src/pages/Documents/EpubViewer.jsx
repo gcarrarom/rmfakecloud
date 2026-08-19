@@ -226,10 +226,13 @@ export default function EpubViewer({ file, onSelect }) {
   };
 
   const resetTypography = (setter, value) => {
+    const currentGlobalPage = sumPages(pageCounts, chapter) + page + 1;
     setContents({});
     setter(value);
     setPageCounts([]);
-    setRestoring(false);
+    setTargetPage(currentGlobalPage);
+    setRestoring(true);
+    setChapter(0);
     setPage(0);
   };
 
@@ -239,6 +242,7 @@ export default function EpubViewer({ file, onSelect }) {
   const globalPage = sumPages(pageCounts, chapter) + page + 1;
   const knownTotal = pageCounts.reduce((total, count) => total + (count || 0), 0);
   const hasCompletePageCount = pageCounts.length === chapters.length && pageCounts.every(Boolean);
+  const displayedPage = restoring ? targetPage : globalPage;
   return (
     <div className={styles.viewerShell}>
       <Navbar className={styles.breadcrumbBar}><NameTag node={file} onSelect={onSelect} /></Navbar>
@@ -248,10 +252,10 @@ export default function EpubViewer({ file, onSelect }) {
             <Button size="sm" variant="outline-secondary" disabled={chapter === 0 && page === 0} onClick={movePrevious}><FaChevronLeft /></Button>
             <Button size="sm" variant="outline-secondary" disabled={chapter === chapters.length - 1 && page + 1 >= (pageCounts[chapter] || 1)} onClick={moveNext}><FaChevronRight /></Button>
           </ButtonGroup>
-          <span style={{ margin: "0 10px" }}>Page {globalPage}{hasCompletePageCount ? ` of ${knownTotal}` : ""}</span>
+          <span style={{ margin: "0 10px" }}>Page {displayedPage}{hasCompletePageCount ? ` of ${knownTotal}` : ""}</span>
         </div>
         <div className="d-flex align-items-center gap-2 flex-wrap">
-          <Form.Control size="sm" type="number" min="1" value={globalPage} onChange={(event) => jumpToGlobalPage(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") jumpToGlobalPage(event.target.value); }} aria-label="Jump to page" style={{ width: "6rem" }} />
+          <Form.Control size="sm" type="number" min="1" value={displayedPage} onChange={(event) => jumpToGlobalPage(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") jumpToGlobalPage(event.target.value); }} aria-label="Jump to page" style={{ width: "6rem" }} />
           <Form.Select size="sm" value={chapter} onChange={(event) => { setRestoring(false); setChapter(Number(event.target.value)); setPage(0); }} aria-label="Jump to chapter" style={{ width: "12rem" }}>
             {chapters.map((item, index) => <option key={item.href} value={index}>{item.title || `Chapter ${index + 1}`}</option>)}
           </Form.Select>
@@ -273,7 +277,7 @@ export default function EpubViewer({ file, onSelect }) {
         </div>
       </Navbar>
       <div className={styles.viewerContent}>
-        {contents[chapter] ? <iframe ref={iframeRef} key={`${current.href}-${fontSize}-${fontFamily}-${lineHeight}-${theme}-${textAlign}`} title={current.title || `Chapter ${chapter + 1}`} onLoad={onChapterMeasured} sandbox="allow-same-origin" srcDoc={contents[chapter]} style={{ width: "100%", height: "100%", minHeight: "32rem", border: 0 }} /> : <div className="text-center p-5"><Spinner animation="border" /> Loading page...</div>}
+        {contents[chapter] ? <iframe ref={iframeRef} key={`${current.href}-${fontSize}-${fontFamily}-${lineHeight}-${theme}-${textAlign}`} title={current.title || `Chapter ${chapter + 1}`} onLoad={onChapterMeasured} sandbox="allow-same-origin" srcDoc={contents[chapter]} style={{ width: "100%", height: "100%", minHeight: "32rem", border: 0, visibility: restoring ? "hidden" : "visible" }} /> : <div className="text-center p-5"><Spinner animation="border" /> Loading page...</div>}
       </div>
     </div>
   );
