@@ -326,6 +326,38 @@ func (fs *FileSystemStorage) Export(uid, docid string) (r io.ReadCloser, err err
 	return reader, err
 }
 
+// ExportPayload returns the raw EPUB payload for a document.
+func (fs *FileSystemStorage) ExportPayload(uid, docid string) (io.ReadCloser, error) {
+	tree, err := fs.GetCachedTree(uid)
+	if err != nil {
+		return nil, err
+	}
+	doc, err := tree.FindDoc(docid)
+	if err != nil {
+		return nil, err
+	}
+	for _, entry := range doc.Files {
+		if filepath.Ext(entry.EntryName) == storage.EpubFileExt {
+			return fs.BlobStorage(uid).GetReader(entry.Hash)
+		}
+	}
+	return nil, fmt.Errorf("document %s has no EPUB payload", docid)
+}
+
+// ExportEpubResource returns one resource from an EPUB without exposing the archive.
+func (fs *FileSystemStorage) ExportEpubResource(uid, docid, resourcePath string) (io.ReadCloser, string, error) {
+	payload, err := fs.ExportPayload(uid, docid)
+	if err != nil {
+		return nil, "", err
+	}
+	data, err := io.ReadAll(payload)
+	payload.Close()
+	if err != nil {
+		return nil, "", err
+	}
+	return epubResource(data, resourcePath)
+}
+
 // orderedV6PageHashes returns page hashes in document order. The content page
 // list is the only reliable order for UUID-named pages; the filename fallback
 // handles older documents whose pages use numeric names.

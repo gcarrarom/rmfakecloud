@@ -288,6 +288,8 @@ func (app *ReactAppWrapper) getDocument(c *gin.Context) {
 	if exportType == "rmdoc" {
 		c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s.rmdoc\"", docid))
 		c.DataFromReader(http.StatusOK, -1, "application/octet-stream", reader, nil)
+	} else if exportType == "epub" {
+		c.DataFromReader(http.StatusOK, -1, "application/epub+zip", reader, nil)
 	} else {
 		c.DataFromReader(http.StatusOK, -1, "application/pdf", reader, nil)
 	}
@@ -328,6 +330,21 @@ func (app *ReactAppWrapper) updateReadingProgress(c *gin.Context) {
 		return
 	}
 	c.Status(http.StatusNoContent)
+}
+
+func (app *ReactAppWrapper) getEpubResource(c *gin.Context) {
+	resourcePath := c.Query("path")
+	if resourcePath == "" {
+		c.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+	reader, contentType, err := app.getBackend(c).ExportEpubResource(userID(c), common.ParamS(docIDParam, c), resourcePath)
+	if err != nil {
+		c.AbortWithStatus(http.StatusNotFound)
+		return
+	}
+	defer reader.Close()
+	c.DataFromReader(http.StatusOK, -1, contentType, reader, nil)
 }
 
 // move rename

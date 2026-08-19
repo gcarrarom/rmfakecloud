@@ -81,6 +81,7 @@ func (app *ReactAppWrapper) RegisterRoutes(router *gin.Engine) {
 	auth.GET("documents/:docid/metadata", app.getDocumentMetadata)
 	auth.GET("documents/:docid/progress", app.getReadingProgress)
 	auth.PUT("documents/:docid/progress", app.updateReadingProgress)
+	auth.GET("documents/:docid/epub/resource", app.getEpubResource)
 
 	// integrations
 	auth.GET("integrations", app.listIntegrations)

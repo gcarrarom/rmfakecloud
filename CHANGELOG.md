@@ -1,5 +1,7 @@
 # Unreleased
 
+- Read EPUB chapters on demand in the web reader instead of converting or downloading the entire book.
+
 # 0.0.35
 
 ## Features

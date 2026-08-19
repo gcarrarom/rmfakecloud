@@ -52,8 +52,8 @@ func (fs *FileSystemStorage) getPathFromUser(uid, path string) string {
 
 // ExportDocument Exports a document to the outputType
 func (fs *FileSystemStorage) ExportDocument(uid, id, outputType string, exportOption storage.ExportOption) (io.ReadCloser, error) {
-	if outputType != "pdf" {
-		return nil, errors.New("todo: only pdfs supported")
+	if outputType != "pdf" && outputType != "epub" {
+		return nil, errors.New("unsupported export type: " + outputType)
 	}
 
 	cacheDirPath := fs.getPathFromUser(uid, CacheDir)
@@ -88,6 +88,12 @@ func (fs *FileSystemStorage) ExportDocument(uid, id, outputType string, exportOp
 	err = arch.Read(zipFile, size)
 	if err != nil {
 		return nil, err
+	}
+	if outputType == "epub" {
+		if arch.Payload == nil {
+			return nil, errors.New("document has no EPUB payload")
+		}
+		return exporter.NewSeekCloser(arch.Payload), nil
 	}
 
 	if arch.Payload != nil {

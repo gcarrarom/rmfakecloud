@@ -26,6 +26,9 @@ func (b *backend15) Export(uid, docid, exporttype string, opt storage.ExportOpti
 	if exporttype == "rmdoc" {
 		return b.blobHandler.ExportRmDoc(uid, docid)
 	}
+	if exporttype == "epub" {
+		return b.blobHandler.ExportPayload(uid, docid)
+	}
 	r, err = b.blobHandler.Export(uid, docid)
 	return
 }
@@ -44,6 +47,10 @@ func (b *backend15) GetReadingProgress(uid, docID string) (*viewmodel.ReadingPro
 		currentPage = doc.LastOpenedPage + 1
 	}
 	return &viewmodel.ReadingProgress{CurrentPage: currentPage, PageCount: doc.PageCount}, nil
+}
+
+func (b *backend15) ExportEpubResource(uid, docID, resourcePath string) (io.ReadCloser, string, error) {
+	return b.blobHandler.ExportEpubResource(uid, docID, resourcePath)
 }
 
 func (b *backend15) UpdateReadingProgress(uid, docID string, page int) error {

@@ -160,6 +160,16 @@ class ApiServices {
     }).then((r) => handleError(r));
   }
 
+  getEpubResource(id, path) {
+    const query = new URLSearchParams({ path });
+    return fetch(`${constants.ROOT_URL}/documents/${id}/epub/resource?${query}`, {
+      method: "GET",
+    }).then((r) => {
+      handleError(r);
+      return r.blob();
+    });
+  }
+
   uploadRmdoc(id, blob, filename) {
     const formData = new FormData();
     formData.append(

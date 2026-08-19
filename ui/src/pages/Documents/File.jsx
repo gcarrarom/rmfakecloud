@@ -13,14 +13,15 @@ import styles from "./Documents.module.scss";
 import { Document, Page } from "react-pdf";
 
 const RmdocViewer = lazy(() => import("./RmdocViewer"));
+const EpubViewer = lazy(() => import("./EpubViewer"));
 
-function usePdfData(fileId) {
+function usePdfData(fileId, enabled) {
   const [pdfData, setPdfData] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!fileId) return;
+    if (!fileId || !enabled) return;
     let cancelled = false;
     setLoading(true);
     setError(null);
@@ -53,15 +54,16 @@ function usePdfData(fileId) {
       });
 
     return () => { cancelled = true; };
-  }, [fileId]);
+  }, [fileId, enabled]);
 
   return { pdfData, error, loading };
 }
 
 export default function FileViewer({ file, onSelect }) {
   const { data } = file;
+  const isEpub = data.type === "epub";
 
-  const { pdfData, error: pdfError, loading: pdfLoading } = usePdfData(file.id);
+  const { pdfData, error: pdfError, loading: pdfLoading } = usePdfData(file.id, !isEpub);
 
   const [viewMode, setViewMode] = useState("pdf"); // "pdf" or "rmdoc"
   const [page, setPage] = useState(1);
@@ -143,6 +145,14 @@ export default function FileViewer({ file, onSelect }) {
     return (
       <Suspense fallback={<div className="text-center p-5"><Spinner animation="border" /></div>}>
         <RmdocViewer file={file} onSelect={onSelect} />
+      </Suspense>
+    );
+  }
+
+  if (isEpub) {
+    return (
+      <Suspense fallback={<div className="text-center p-5"><Spinner animation="border" /></div>}>
+        <EpubViewer file={file} onSelect={onSelect} />
       </Suspense>
     );
   }

@@ -100,6 +100,10 @@ func (d *backend10) GetReadingProgress(uid, docID string) (*viewmodel.ReadingPro
 	return &viewmodel.ReadingProgress{CurrentPage: pageForUI(metadata.CurrentPage)}, nil
 }
 
+func (d *backend10) ExportEpubResource(uid, docID, resourcePath string) (io.ReadCloser, string, error) {
+	return d.documentHandler.ExportLegacyEpubResource(uid, docID, resourcePath)
+}
+
 func (d *backend10) UpdateReadingProgress(uid, docID string, page int) error {
 	metadata, err := d.documentHandler.GetMetadata(uid, docID)
 	if err != nil {

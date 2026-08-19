@@ -23,6 +23,7 @@ import (
 type backend interface {
 	GetDocumentTree(uid string) (tree *viewmodel.DocumentTree, err error)
 	Export(uid, doc, exporttype string, opt storage.ExportOption) (stream io.ReadCloser, err error)
+	ExportEpubResource(uid, docID, resourcePath string) (io.ReadCloser, string, error)
 	CreateDocument(uid, name, parent string, stream io.Reader) (doc *storage.Document, err error)
 	CreateFolder(uid, name, parent string) (doc *storage.Document, err error)
 	UpdateDocument(uid, docID, name, parent string) (err error)
@@ -41,6 +42,8 @@ type documentHandler interface {
 	CreateFolder(uid, name, parent string) (doc *storage.Document, err error)
 	GetAllMetadata(uid string) (documents []*messages.RawMetadata, err error)
 	ExportDocument(uid, id, format string, exportOption storage.ExportOption) (stream io.ReadCloser, err error)
+	GetDocument(uid, id string) (io.ReadCloser, error)
+	ExportLegacyEpubResource(uid, id, resourcePath string) (io.ReadCloser, string, error)
 	GetMetadata(uid, id string) (*messages.RawMetadata, error)
 	UpdateMetadata(uid string, r *messages.RawMetadata) error
 	RemoveDocument(uid, docid string) error
@@ -56,6 +59,8 @@ type blobHandler interface {
 	CreateBlobFolder(uid, name, parent string) (doc *storage.Document, err error)
 	Export(uid, docid string) (io.ReadCloser, error)
 	ExportRmDoc(uid, docid string) (io.ReadCloser, error)
+	ExportPayload(uid, docid string) (io.ReadCloser, error)
+	ExportEpubResource(uid, docid, resourcePath string) (io.ReadCloser, string, error)
 }
 
 type notificationHub interface {
