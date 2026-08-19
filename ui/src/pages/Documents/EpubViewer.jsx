@@ -41,10 +41,17 @@ function chapterHtml(id, chapterPath, source, settings) {
     link.href = resourceUrl(id, resourcePath(chapterPath, link.getAttribute("href")));
   });
   const body = document.body || document.documentElement;
+  const themes = {
+    light: { background: "#ffffff", foreground: "#202124", link: "#1769aa" },
+    dark: { background: "#202124", foreground: "#eeeeee", link: "#8ab4f8" },
+    sepia: { background: "#f4ecd8", foreground: "#493b2a", link: "#76552b" },
+  };
+  const theme = themes[settings.theme];
   return `<!doctype html><html><head><meta charset="utf-8"><style>
-    html, body { margin: 0; padding: 0; }
-    body { font-size: ${settings.fontSize}px; line-height: ${settings.lineHeight}; font-family: ${settings.fontFamily}; color: #202124; height: 100vh; column-width: calc(100vw - 2rem); column-gap: 2rem; column-fill: auto; overflow: hidden; }
-    body > * { break-inside: avoid; } img { max-width: 100%; height: auto; } a { color: #1769aa; } h1,h2,h3 { line-height: 1.25; }
+    *, *::before, *::after { box-sizing: border-box; }
+    html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: ${theme.background}; }
+    body { margin: 0; width: 100vw; height: 100vh; padding: 1rem; font-size: ${settings.fontSize}px; line-height: ${settings.lineHeight}; font-family: ${settings.fontFamily}; text-align: ${settings.textAlign}; color: ${theme.foreground}; background: ${theme.background}; column-width: calc(100vw - 2rem); column-gap: 2rem; column-fill: auto; overflow: visible; overflow-wrap: anywhere; }
+    img, video, svg { max-width: 100%; height: auto; } table { display: block; max-width: 100%; overflow-x: auto; } pre { max-width: 100%; white-space: pre-wrap; overflow-wrap: anywhere; } a { color: ${theme.link}; } h1,h2,h3 { line-height: 1.25; }
   </style></head><body>${body.innerHTML}</body></html>`;
 }
 
@@ -90,6 +97,8 @@ export default function EpubViewer({ file, onSelect }) {
   const [fontSize, setFontSize] = useState(18);
   const [fontFamily, setFontFamily] = useState("system-ui, sans-serif");
   const [lineHeight, setLineHeight] = useState(1.65);
+  const [theme, setTheme] = useState("light");
+  const [textAlign, setTextAlign] = useState("left");
 
   useEffect(() => {
     let cancelled = false;
@@ -118,7 +127,7 @@ export default function EpubViewer({ file, onSelect }) {
     Promise.all(indices.map(async (index) => {
       if (contents[index]) return null;
       const source = await textResource(data.id, chapters[index].href);
-      return [index, chapterHtml(data.id, chapters[index].href, source, { fontSize, fontFamily, lineHeight })];
+      return [index, chapterHtml(data.id, chapters[index].href, source, { fontSize, fontFamily, lineHeight, theme, textAlign })];
     })).then((loaded) => {
       if (cancelled) return;
       const newContents = loaded.filter(Boolean);
@@ -127,7 +136,7 @@ export default function EpubViewer({ file, onSelect }) {
       }
     }).catch(() => {});
     return () => { cancelled = true; };
-  }, [data.id, chapter, chapters.length, contents, fontSize, fontFamily, lineHeight]);
+  }, [data.id, chapter, chapters.length, contents, fontSize, fontFamily, lineHeight, theme, textAlign]);
 
   useEffect(() => {
     if (!progressLoaded || !chapters.length || restoring || !pageCounts[chapter]) return undefined;
@@ -255,10 +264,16 @@ export default function EpubViewer({ file, onSelect }) {
           <Form.Select size="sm" value={lineHeight} onChange={(event) => resetTypography(setLineHeight, Number(event.target.value))} aria-label="Line spacing" style={{ width: "7rem" }}>
             {[1.4, 1.65, 1.9, 2.2].map((spacing) => <option key={spacing} value={spacing}>Line {spacing}</option>)}
           </Form.Select>
+          <Form.Select size="sm" value={theme} onChange={(event) => resetTypography(setTheme, event.target.value)} aria-label="Reader theme" style={{ width: "7rem" }}>
+            <option value="light">Light</option><option value="dark">Dark</option><option value="sepia">Sepia</option>
+          </Form.Select>
+          <Form.Select size="sm" value={textAlign} onChange={(event) => resetTypography(setTextAlign, event.target.value)} aria-label="Text alignment" style={{ width: "8rem" }}>
+            <option value="left">Aligned left</option><option value="justify">Justified</option><option value="center">Centered</option>
+          </Form.Select>
         </div>
       </Navbar>
       <div className={styles.viewerContent}>
-        {contents[chapter] ? <iframe ref={iframeRef} key={`${current.href}-${fontSize}-${fontFamily}-${lineHeight}`} title={current.title || `Chapter ${chapter + 1}`} onLoad={onChapterMeasured} sandbox="allow-same-origin" srcDoc={contents[chapter]} style={{ width: "100%", height: "100%", minHeight: "32rem", border: 0 }} /> : <div className="text-center p-5"><Spinner animation="border" /> Loading page...</div>}
+        {contents[chapter] ? <iframe ref={iframeRef} key={`${current.href}-${fontSize}-${fontFamily}-${lineHeight}-${theme}-${textAlign}`} title={current.title || `Chapter ${chapter + 1}`} onLoad={onChapterMeasured} sandbox="allow-same-origin" srcDoc={contents[chapter]} style={{ width: "100%", height: "100%", minHeight: "32rem", border: 0 }} /> : <div className="text-center p-5"><Spinner animation="border" /> Loading page...</div>}
       </div>
     </div>
   );

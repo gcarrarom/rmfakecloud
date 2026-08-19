@@ -1,6 +1,6 @@
 # Unreleased
 
-# 0.0.41
+# 0.0.42
 
 ## Features
 
@@ -14,6 +14,7 @@
 - Track EPUB progress by rendered page rather than by chapter.
 - Add direct page jumping and page-by-page navigation.
 - Prevent an EPUB preload render loop and misleading partial page totals.
+- Fix EPUB page layout clipping and add light, dark, sepia, and text-alignment controls.
 
 # 0.0.35
 
