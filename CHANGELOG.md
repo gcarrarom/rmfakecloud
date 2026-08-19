@@ -1,6 +1,11 @@
 # Unreleased
 
+# 0.0.36
+
+## Features
+
 - Read EPUB chapters on demand in the web reader instead of converting or downloading the entire book.
+- Broadcast web reading-position updates to connected tablet clients.
 
 # 0.0.35
 

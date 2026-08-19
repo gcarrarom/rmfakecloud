@@ -110,7 +110,17 @@ func (d *backend10) UpdateReadingProgress(uid, docID string, page int) error {
 		return err
 	}
 	metadata.CurrentPage = page - 1
-	return d.documentHandler.UpdateMetadata(uid, metadata)
+	if err := d.documentHandler.UpdateMetadata(uid, metadata); err != nil {
+		return err
+	}
+	d.hub.Notify(uid, webDevice, hub.DocumentNotification{
+		ID:      metadata.ID,
+		Type:    metadata.Type,
+		Version: metadata.Version,
+		Parent:  metadata.Parent,
+		Name:    metadata.VissibleName,
+	}, messages.DocAddedEvent)
+	return nil
 }
 
 func pageForUI(page int) int {

@@ -131,7 +131,7 @@ export default function EpubViewer({ file, onSelect }) {
             <Button size="sm" variant="outline-secondary" disabled={chapter === 0} onClick={() => setChapter((value) => Math.max(value - 1, 0))}><FaChevronLeft /></Button>
             <Button size="sm" variant="outline-secondary" disabled={chapter === chapters.length - 1} onClick={() => setChapter((value) => Math.min(value + 1, chapters.length - 1))}><FaChevronRight /></Button>
           </ButtonGroup>
-          <span style={{ margin: "0 10px" }}>Chapter {chapter + 1} of {chapters.length} ({Math.round(((chapter + 1) / chapters.length) * 100)}%)</span>
+          <span style={{ margin: "0 10px" }}>Progress: {Math.round(((chapter + 1) / chapters.length) * 100)}%</span>
         </div>
       </Navbar>
       <div className={styles.viewerContent}>

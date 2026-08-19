@@ -54,7 +54,11 @@ func (b *backend15) ExportEpubResource(uid, docID, resourcePath string) (io.Read
 }
 
 func (b *backend15) UpdateReadingProgress(uid, docID string, page int) error {
-	return b.blobHandler.UpdateBlobDocumentReadingPosition(uid, docID, page)
+	if err := b.blobHandler.UpdateBlobDocumentReadingPosition(uid, docID, page); err != nil {
+		return err
+	}
+	b.Sync(uid)
+	return nil
 }
 
 func (b *backend15) CreateDocument(uid, filename, parent string, stream io.Reader) (doc *storage.Document, err error) {
