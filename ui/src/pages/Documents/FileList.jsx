@@ -109,6 +109,19 @@ export default function FileListViewer({ listStyle, files, onSelect, counter, se
         },
       },
       {
+        id: 'progress',
+        header: 'Progress',
+        accessorFn: (row) => row.isLeaf ? row.data.currentPage || 0 : 0,
+        cell: ({ row }) => (
+          <div className="filelist-metadata">
+            {row.original.isLeaf && row.original.data.currentPage > 0
+              ? `Page ${row.original.data.currentPage}${row.original.data.pageCount > 0 ? ` of ${row.original.data.pageCount}` : ''}`
+              : row.original.isLeaf ? 'Not started' : ''}
+          </div>
+        ),
+        sortingFn: (rowA, rowB) => (rowA.original.data.currentPage || 0) - (rowB.original.data.currentPage || 0),
+      },
+      {
         accessorKey: 'data.lastModified',
         id: 'lastModified',
         header: 'Last Modified',
@@ -149,7 +162,9 @@ export default function FileListViewer({ listStyle, files, onSelect, counter, se
     const item = row.original;
     const isSelected = selectedIds.includes(item.id);
     const secondaryText = item.isLeaf
-      ? formatBytes(item.data.size)
+      ? (item.data.currentPage > 0
+        ? `Page ${item.data.currentPage}${item.data.pageCount > 0 ? ` of ${item.data.pageCount}` : ''}`
+        : formatBytes(item.data.size))
       : `${item.children?.length || 0} items`;
 
     return (

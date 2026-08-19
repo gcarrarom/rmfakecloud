@@ -1,5 +1,12 @@
 # Unreleased
 
+# 0.0.35
+
+## Features
+
+- Save and restore the current reading page for PDFs, EPUBs, and native documents.
+- Show reading progress in document lists, the document tree, and viewers.
+
 # 0.0.34
 
 ## Bug fixes

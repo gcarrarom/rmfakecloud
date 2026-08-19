@@ -142,6 +142,24 @@ class ApiServices {
     });
   }
 
+  getReadingProgress(id) {
+    return fetch(`${constants.ROOT_URL}/documents/${id}/progress`, {
+      method: "GET",
+      headers: this.header(),
+    }).then((r) => {
+      handleError(r);
+      return r.json();
+    });
+  }
+
+  updateReadingProgress(id, currentPage) {
+    return fetch(`${constants.ROOT_URL}/documents/${id}/progress`, {
+      method: "PUT",
+      headers: this.header(),
+      body: JSON.stringify({ currentPage }),
+    }).then((r) => handleError(r));
+  }
+
   uploadRmdoc(id, blob, filename) {
     const formData = new FormData();
     formData.append(

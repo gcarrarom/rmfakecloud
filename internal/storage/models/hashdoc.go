@@ -26,6 +26,7 @@ type HashDoc struct {
 	MetadataFile
 	//PayloadType
 	PayloadType string
+	PageCount   int
 }
 
 func NewHashDocWithMeta(documentID string, meta MetadataFile) *HashDoc {
@@ -181,6 +182,7 @@ func (d *HashDoc) readContent(hash string, r RemoteStorage) error {
 		return fmt.Errorf("cannot read content %s: %w", hash, err)
 	}
 	d.PayloadType = contentFile.FileType
+	d.PageCount = contentFile.PageCount
 
 	if len(contentFile.SizeInBytes) > 0 {
 		d.Size, err = strconv.ParseInt(contentFile.SizeInBytes, 10, 64)

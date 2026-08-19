@@ -77,6 +77,7 @@ func (d *backend10) GetDocumentTree(uid string) (tree *viewmodel.DocumentTree, e
 			Type:         d.Type,
 			FileType:     "TODO",
 			LastModified: lastMod,
+			CurrentPage:  pageForUI(d.CurrentPage),
 		})
 
 	}
@@ -89,6 +90,30 @@ func (d *backend10) Export(uid, docID, exporttype string, opt storage.ExportOpti
 	}
 	log.Info(uiLogger, ui10, "Exported document id: ", docID)
 	return r, nil
+}
+
+func (d *backend10) GetReadingProgress(uid, docID string) (*viewmodel.ReadingProgress, error) {
+	metadata, err := d.documentHandler.GetMetadata(uid, docID)
+	if err != nil {
+		return nil, err
+	}
+	return &viewmodel.ReadingProgress{CurrentPage: pageForUI(metadata.CurrentPage)}, nil
+}
+
+func (d *backend10) UpdateReadingProgress(uid, docID string, page int) error {
+	metadata, err := d.documentHandler.GetMetadata(uid, docID)
+	if err != nil {
+		return err
+	}
+	metadata.CurrentPage = page - 1
+	return d.documentHandler.UpdateMetadata(uid, metadata)
+}
+
+func pageForUI(page int) int {
+	if page <= 0 {
+		return 0
+	}
+	return page + 1
 }
 
 func (d *backend10) UpdateDocument(uid, docID, name, parent string) (err error) {

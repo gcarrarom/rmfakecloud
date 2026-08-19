@@ -307,6 +307,29 @@ func (app *ReactAppWrapper) getDocumentMetadata(c *gin.Context) {
 
 }
 
+func (app *ReactAppWrapper) getReadingProgress(c *gin.Context) {
+	progress, err := app.getBackend(c).GetReadingProgress(userID(c), common.ParamS(docIDParam, c))
+	if err != nil {
+		c.AbortWithStatus(http.StatusNotFound)
+		return
+	}
+	c.JSON(http.StatusOK, progress)
+}
+
+func (app *ReactAppWrapper) updateReadingProgress(c *gin.Context) {
+	var update viewmodel.UpdateReadingProgress
+	if err := c.ShouldBindJSON(&update); err != nil {
+		badReq(c, err.Error())
+		return
+	}
+	if err := app.getBackend(c).UpdateReadingProgress(userID(c), common.ParamS(docIDParam, c), update.CurrentPage); err != nil {
+		log.Error("unable to update reading progress: ", err)
+		c.AbortWithStatus(http.StatusInternalServerError)
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
 // move rename
 func (app *ReactAppWrapper) updateDocument(c *gin.Context) {
 	upd := viewmodel.UpdateDoc{}

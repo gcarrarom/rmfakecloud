@@ -427,6 +427,39 @@ func (fs *FileSystemStorage) UpdateBlobDocument(uid, docID, name, parent string)
 	return err
 }
 
+// UpdateBlobDocumentReadingPosition updates only the reader position in metadata.
+func (fs *FileSystemStorage) UpdateBlobDocumentReadingPosition(uid, docID string, page int) error {
+	tree, err := fs.GetCachedTree(uid)
+	if err != nil {
+		return err
+	}
+	blobStorage := fs.BlobStorage(uid)
+	return updateTree(tree, blobStorage, func(t *models.HashTree) error {
+		hashDoc, err := t.FindDoc(docID)
+		if err != nil {
+			return err
+		}
+		hashDoc.LastOpenedPage = page
+		hashDoc.LastOpened = models.FromTime(time.Now())
+		metadataHash, metadataReader, err := hashDoc.MetadataReader()
+		if err != nil {
+			return err
+		}
+		if err := blobStorage.Write(metadataHash, metadataReader); err != nil {
+			return err
+		}
+		hashDoc.Rehash()
+		hashDocReader, err := hashDoc.IndexReader()
+		if err != nil {
+			return err
+		}
+		if err := blobStorage.Write(hashDoc.Hash, hashDocReader); err != nil {
+			return err
+		}
+		return t.Rehash()
+	})
+}
+
 // DeleteBlobDocument deletes blob document
 func (fs *FileSystemStorage) DeleteBlobDocument(uid, docID string) (err error) {
 	tree, err := fs.GetCachedTree(uid)

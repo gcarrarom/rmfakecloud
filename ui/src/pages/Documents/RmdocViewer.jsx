@@ -20,6 +20,7 @@ export default function RmdocViewer({ file, onSelect }) {
   const [pages, setPages] = useState([]);
   const [contentJson, setContentJson] = useState(null);
   const [page, setPage] = useState(0);
+  const [progressLoaded, setProgressLoaded] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [modified, setModified] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -98,6 +99,34 @@ export default function RmdocViewer({ file, onSelect }) {
       cancelled = true;
     };
   }, [data.id]);
+
+  useEffect(() => {
+    if (pages.length > 0) {
+      setPage((currentPage) => Math.min(currentPage, pages.length - 1));
+    }
+  }, [pages.length]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setProgressLoaded(false);
+    apiservice.getReadingProgress(data.id).then((progress) => {
+      if (!cancelled && progress.currentPage > 0) {
+        setPage(progress.currentPage - 1);
+      }
+      if (!cancelled) setProgressLoaded(true);
+    }).catch(() => {
+      if (!cancelled) setProgressLoaded(true);
+    });
+    return () => { cancelled = true; };
+  }, [data.id]);
+
+  useEffect(() => {
+    if (!progressLoaded || pages.length === 0) return undefined;
+    const timeout = setTimeout(() => {
+      apiservice.updateReadingProgress(data.id, page + 1).catch(() => {});
+    }, 400);
+    return () => clearTimeout(timeout);
+  }, [data.id, page, pages.length, progressLoaded]);
 
   const onPrev = () => setPage((p) => Math.max(p - 1, 0));
   const onNext = () => setPage((p) => Math.min(p + 1, pages.length - 1));
@@ -182,7 +211,7 @@ export default function RmdocViewer({ file, onSelect }) {
               </Button>
             </ButtonGroup>
             <span style={{ margin: "0 10px" }}>
-              Page: {page + 1} of {pages.length}
+              Page: {page + 1} of {pages.length} ({Math.round(((page + 1) / pages.length) * 100)}%)
             </span>
           </div>
         )}

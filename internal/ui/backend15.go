@@ -30,6 +30,26 @@ func (b *backend15) Export(uid, docid, exporttype string, opt storage.ExportOpti
 	return
 }
 
+func (b *backend15) GetReadingProgress(uid, docID string) (*viewmodel.ReadingProgress, error) {
+	tree, err := b.blobHandler.GetCachedTree(uid)
+	if err != nil {
+		return nil, err
+	}
+	doc, err := tree.FindDoc(docID)
+	if err != nil {
+		return nil, err
+	}
+	currentPage := 0
+	if doc.LastOpened != "" {
+		currentPage = doc.LastOpenedPage + 1
+	}
+	return &viewmodel.ReadingProgress{CurrentPage: currentPage, PageCount: doc.PageCount}, nil
+}
+
+func (b *backend15) UpdateReadingProgress(uid, docID string, page int) error {
+	return b.blobHandler.UpdateBlobDocumentReadingPosition(uid, docID, page)
+}
+
 func (b *backend15) CreateDocument(uid, filename, parent string, stream io.Reader) (doc *storage.Document, err error) {
 	doc, err = b.blobHandler.CreateBlobDocument(uid, filename, parent, stream)
 	return

@@ -66,11 +66,42 @@ export default function FileViewer({ file, onSelect }) {
   const [viewMode, setViewMode] = useState("pdf"); // "pdf" or "rmdoc"
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(1);
+  const [savedPage, setSavedPage] = useState(1);
+  const [progressLoaded, setProgressLoaded] = useState(false);
   const [height, setHeight] = useState(100);
   const onLoadSuccess = (pdf) => {
-    setPage(1);
     setPages(pdf.numPages);
+    setPage(Math.min(Math.max(savedPage, 1), pdf.numPages));
   };
+  useEffect(() => {
+    let cancelled = false;
+    setProgressLoaded(false);
+    setSavedPage(1);
+    setPage(1);
+    apiservice.getReadingProgress(data.id).then((progress) => {
+      if (!cancelled) {
+        setSavedPage(progress.currentPage || 1);
+        setProgressLoaded(true);
+      }
+    }).catch(() => {
+      if (!cancelled) setProgressLoaded(true);
+    });
+    return () => { cancelled = true; };
+  }, [data.id]);
+
+  useEffect(() => {
+    if (progressLoaded && pdfData && pages > 1) {
+      setPage(Math.min(Math.max(savedPage, 1), pages));
+    }
+  }, [progressLoaded, pdfData, pages, savedPage]);
+
+  useEffect(() => {
+    if (!progressLoaded || pages < 1) return undefined;
+    const timeout = setTimeout(() => {
+      apiservice.updateReadingProgress(data.id, page).catch(() => {});
+    }, 400);
+    return () => clearTimeout(timeout);
+  }, [data.id, page, pages, progressLoaded]);
   const onPrev = () => {
     setPage((p) => Math.max(p - 1, 1));
   };
@@ -129,9 +160,9 @@ export default function FileViewer({ file, onSelect }) {
               <Button size="sm" variant="outline-secondary" onClick={onPrev}><FaChevronLeft /></Button>
               <Button size="sm" variant="outline-secondary" onClick={onNext}><FaChevronRight /></Button>
             </ButtonGroup>
-            <span style={{ margin: '0 10px' }}>
-              Page: {page} of {pages}
-            </span>
+              <span style={{ margin: '0 10px' }}>
+                Page: {page} of {pages} ({Math.round((page / pages) * 100)}%)
+              </span>
           </div>
         )}
         <div className={styles.toolbarRight}>

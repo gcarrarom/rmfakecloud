@@ -26,7 +26,14 @@ const DocumentTree = ({ selection, onSelect, treeRef, term, entries, height = 70
       >
         <div className={itemClassName(node.data)}>
           <FileIcon file={node.data} />
-          {node.data.name}
+          <span>{node.data.name}</span>
+          {!node.data.isFolder && node.data.currentPage > 0 && (
+            <small style={{ marginLeft: "auto", opacity: 0.7 }}>
+              {node.data.pageCount > 0
+                ? `${node.data.currentPage}/${node.data.pageCount}`
+                : `p. ${node.data.currentPage}`}
+            </small>
+          )}
         </div>
       </div>
     );

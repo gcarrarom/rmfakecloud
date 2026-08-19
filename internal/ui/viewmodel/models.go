@@ -35,8 +35,9 @@ type ChangeEmailForm struct {
 type ErrorResponse struct {
 	Error string `json:"error"`
 }
+
 func NewErrorResponse(errormsg string) ErrorResponse {
-	return ErrorResponse {
+	return ErrorResponse{
 		Error: errormsg,
 	}
 }
@@ -55,6 +56,7 @@ type InternalDoc struct {
 	FileType     string
 	Name         string
 	CurrentPage  int
+	PageCount    int
 	Parent       string
 	Size         int64
 }
@@ -76,6 +78,8 @@ func makeDocument(d *InternalDoc) (entry Entry) {
 		LastModified: d.LastModified,
 		DocumentType: d.FileType,
 		Size:         d.Size,
+		CurrentPage:  d.CurrentPage,
+		PageCount:    d.PageCount,
 	}
 	return
 }
@@ -92,6 +96,10 @@ func DocTreeFromHashTree(tree *models.HashTree) *DocumentTree {
 		if err != nil {
 			log.Warn("incorrect lastmodified for: ", d.DocumentName, " value: ", d.LastModified, " ", err)
 		}
+		currentPage := 0
+		if d.LastOpened != "" {
+			currentPage = d.LastOpenedPage + 1
+		}
 		docs = append(docs, &InternalDoc{
 			ID:           d.EntryName,
 			Parent:       d.MetadataFile.Parent,
@@ -99,6 +107,8 @@ func DocTreeFromHashTree(tree *models.HashTree) *DocumentTree {
 			Type:         d.MetadataFile.CollectionType,
 			LastModified: lastModified,
 			FileType:     d.PayloadType,
+			CurrentPage:  currentPage,
+			PageCount:    d.PageCount,
 			Size:         d.Size,
 		})
 	}
@@ -203,6 +213,17 @@ type Document struct {
 	DocumentType string    `json:"type"` //notebook, pdf, epub
 	LastModified time.Time `json:"lastModified"`
 	Size         int64     `json:"size"`
+	CurrentPage  int       `json:"currentPage"`
+	PageCount    int       `json:"pageCount"`
+}
+
+type ReadingProgress struct {
+	CurrentPage int `json:"currentPage"`
+	PageCount   int `json:"pageCount"`
+}
+
+type UpdateReadingProgress struct {
+	CurrentPage int `json:"currentPage" binding:"min=1"`
 }
 
 // DocumentList is a list of documents
@@ -216,7 +237,7 @@ type User struct {
 	Email        string `json:"email"`
 	Name         string `json:"name"`
 	NewPassword  string `json:"newpassword,omitempty"`
-	IsAdmin 	 bool `json:"isAdmin"`
+	IsAdmin      bool   `json:"isAdmin"`
 	CreatedAt    time.Time
 	Integrations []string `json:"integrations,omitempty"`
 }
