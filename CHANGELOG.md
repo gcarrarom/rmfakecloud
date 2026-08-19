@@ -13,6 +13,7 @@
 - Add web controls for EPUB chapter navigation and typography.
 - Track EPUB progress by rendered page rather than by chapter.
 - Add direct page jumping and page-by-page navigation.
+- Prevent an EPUB preload render loop and misleading partial page totals.
 
 # 0.0.35
 

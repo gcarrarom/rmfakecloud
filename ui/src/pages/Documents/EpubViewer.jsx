@@ -121,7 +121,10 @@ export default function EpubViewer({ file, onSelect }) {
       return [index, chapterHtml(data.id, chapters[index].href, source, { fontSize, fontFamily, lineHeight })];
     })).then((loaded) => {
       if (cancelled) return;
-      setContents((current) => Object.fromEntries([...Object.entries(current), ...loaded.filter(Boolean)]));
+      const newContents = loaded.filter(Boolean);
+      if (newContents.length > 0) {
+        setContents((current) => Object.fromEntries([...Object.entries(current), ...newContents]));
+      }
     }).catch(() => {});
     return () => { cancelled = true; };
   }, [data.id, chapter, chapters.length, contents, fontSize, fontFamily, lineHeight]);
@@ -226,6 +229,7 @@ export default function EpubViewer({ file, onSelect }) {
   const current = chapters[chapter];
   const globalPage = sumPages(pageCounts, chapter) + page + 1;
   const knownTotal = pageCounts.reduce((total, count) => total + (count || 0), 0);
+  const hasCompletePageCount = pageCounts.length === chapters.length && pageCounts.every(Boolean);
   return (
     <div className={styles.viewerShell}>
       <Navbar className={styles.breadcrumbBar}><NameTag node={file} onSelect={onSelect} /></Navbar>
@@ -235,7 +239,7 @@ export default function EpubViewer({ file, onSelect }) {
             <Button size="sm" variant="outline-secondary" disabled={chapter === 0 && page === 0} onClick={movePrevious}><FaChevronLeft /></Button>
             <Button size="sm" variant="outline-secondary" disabled={chapter === chapters.length - 1 && page + 1 >= (pageCounts[chapter] || 1)} onClick={moveNext}><FaChevronRight /></Button>
           </ButtonGroup>
-          <span style={{ margin: "0 10px" }}>Page {globalPage}{knownTotal ? ` of ${knownTotal}${pageCounts.length < chapters.length ? "+" : ""}` : ""}</span>
+          <span style={{ margin: "0 10px" }}>Page {globalPage}{hasCompletePageCount ? ` of ${knownTotal}` : ""}</span>
         </div>
         <div className="d-flex align-items-center gap-2 flex-wrap">
           <Form.Control size="sm" type="number" min="1" value={globalPage} onChange={(event) => jumpToGlobalPage(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") jumpToGlobalPage(event.target.value); }} aria-label="Jump to page" style={{ width: "6rem" }} />
