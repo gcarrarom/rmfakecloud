@@ -77,6 +77,15 @@ jobs:
       - name: Build
         run: make all
 
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+
+      - name: Package Helm chart
+        run: |
+          version="${{ needs.release.outputs.version }}"
+          image_version="${version#v}"
+          helm package helm --version "$image_version" --app-version "$image_version" --destination dist
+
       - name: Upload binaries to release
         uses: softprops/action-gh-release@v2
         with:
