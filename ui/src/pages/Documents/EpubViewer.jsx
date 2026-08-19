@@ -56,6 +56,16 @@ function chapterHtml(id, chapterPath, source, settings) {
   </style></head><body>${body.innerHTML}</body></html>`;
 }
 
+function bookHtml(contents, chapterCount) {
+  const first = new DOMParser().parseFromString(contents[0], "text/html");
+  const chapters = Array.from({ length: chapterCount }, (_, index) => {
+    const document = new DOMParser().parseFromString(contents[index], "text/html");
+    return `<section class="epub-chapter" data-chapter="${index}" style="break-before: ${index ? "column" : "auto"};">${document.body.innerHTML}</section>`;
+  }).join("");
+  first.body.innerHTML = chapters;
+  return first.documentElement.outerHTML;
+}
+
 async function textResource(id, path) {
   return (await apiservice.getEpubResource(id, path)).text();
 }
@@ -125,20 +135,15 @@ export default function EpubViewer({ file, onSelect }) {
   useEffect(() => {
     if (!chapters.length) return undefined;
     let cancelled = false;
-    const indices = [chapter, chapter + 1, chapter - 1].filter((index) => index >= 0 && index < chapters.length);
-    Promise.all(indices.map(async (index) => {
-      if (contents[index]) return null;
-      const source = await textResource(data.id, chapters[index].href);
-      return [index, chapterHtml(data.id, chapters[index].href, source, { fontSize, fontFamily, lineHeight, theme, textAlign })];
+    setContents({});
+    Promise.all(chapters.map(async (item, index) => {
+      const source = await textResource(data.id, item.href);
+      return [index, chapterHtml(data.id, item.href, source, { fontSize, fontFamily, lineHeight, theme, textAlign })];
     })).then((loaded) => {
-      if (cancelled) return;
-      const newContents = loaded.filter(Boolean);
-      if (newContents.length > 0) {
-        setContents((current) => Object.fromEntries([...Object.entries(current), ...newContents]));
-      }
+      if (!cancelled) setContents(Object.fromEntries(loaded));
     }).catch(() => {});
     return () => { cancelled = true; };
-  }, [data.id, chapter, chapters.length, contents]);
+  }, [data.id, chapters.length]);
 
   useEffect(() => {
     setPageInput(String(restoring ? targetPage : sumPages(pageCounts, chapter) + page + 1));
@@ -157,34 +162,33 @@ export default function EpubViewer({ file, onSelect }) {
   useEffect(() => {
     const document = iframeRef.current?.contentDocument;
     const width = document?.documentElement?.clientWidth;
-    if (width) iframeRef.current.contentWindow.scrollTo(page * width, 0);
-  }, [chapter, page, contents]);
+    if (width) iframeRef.current.contentWindow.scrollTo((sumPages(pageCounts, chapter) + page) * width, 0);
+  }, [chapter, page, pageCounts, contents]);
 
-  const onChapterMeasured = () => {
+  const onBookMeasured = () => {
     const document = iframeRef.current?.contentDocument;
     const width = document?.documentElement?.clientWidth || 1;
     const scrollWidth = document?.documentElement?.scrollWidth || width;
-    const measured = Math.max(1, Math.ceil(scrollWidth / width));
-    setPageCounts((current) => {
-      const next = [...current];
-      next[chapter] = measured;
-      if (restoring) {
-        const before = sumPages(next, chapter);
-        if (targetPage <= before + measured) {
-          setPage(Math.max(0, targetPage - before - 1));
-          setRestoring(false);
-        } else if (chapter + 1 < chapters.length) {
-          setPage(0);
-          setChapter(chapter + 1);
-        } else {
-          setPage(Math.max(0, measured - 1));
-          setRestoring(false);
-        }
-      } else {
-        setPage((currentPage) => Math.min(currentPage, measured - 1));
-      }
-      return next;
+    const totalPages = Math.max(1, Math.ceil(scrollWidth / width));
+    const chapterStarts = Array.from(document.querySelectorAll(".epub-chapter"), (item) => {
+      const left = item.getBoundingClientRect().left - document.documentElement.getBoundingClientRect().left;
+      return Math.max(0, Math.round(left / width));
     });
+    const next = chapterStarts.map((start, index) => Math.max(1, (chapterStarts[index + 1] ?? totalPages) - start));
+    setPageCounts(next);
+    if (restoring) {
+      let remaining = Math.min(Math.max(targetPage, 1), totalPages) - 1;
+      const targetChapter = next.findIndex((count) => {
+        if (remaining < count) return true;
+        remaining -= count;
+        return false;
+      });
+      setChapter(targetChapter < 0 ? next.length - 1 : targetChapter);
+      setPage(Math.max(0, remaining));
+      setRestoring(false);
+    } else {
+      setPage((currentPage) => Math.min(currentPage, (next[chapter] || 1) - 1));
+    }
   };
 
   useEffect(() => {
@@ -200,9 +204,9 @@ export default function EpubViewer({ file, onSelect }) {
     body.style.color = colors.foreground;
     body.style.backgroundColor = colors.background;
     document.querySelectorAll("a").forEach((link) => { link.style.color = colors.link; });
-    let frame = requestAnimationFrame(onChapterMeasured);
+    const frame = requestAnimationFrame(onBookMeasured);
     return () => cancelAnimationFrame(frame);
-  }, [chapter, contents, fontSize, fontFamily, lineHeight, theme, textAlign]);
+  }, [contents, fontSize, fontFamily, lineHeight, theme, textAlign]);
 
   const moveToPage = (nextPage) => {
     const chapterPages = pageCounts[chapter] || 1;
@@ -298,7 +302,7 @@ export default function EpubViewer({ file, onSelect }) {
         </div>
       </Navbar>
       <div className={styles.viewerContent}>
-        {contents[chapter] ? <iframe ref={iframeRef} key={current.href} title={current.title || `Chapter ${chapter + 1}`} onLoad={onChapterMeasured} sandbox="allow-same-origin" srcDoc={contents[chapter]} style={{ width: "100%", height: "100%", minHeight: "32rem", border: 0, visibility: restoring ? "hidden" : "visible" }} /> : <div className="text-center p-5"><Spinner animation="border" /> Loading page...</div>}
+        {Object.keys(contents).length === chapters.length ? <iframe ref={iframeRef} title={current.title || `Chapter ${chapter + 1}`} onLoad={onBookMeasured} sandbox="allow-same-origin" srcDoc={bookHtml(contents, chapters.length)} style={{ width: "100%", height: "100%", minHeight: "32rem", border: 0, visibility: restoring ? "hidden" : "visible" }} /> : <div className="text-center p-5"><Spinner animation="border" /> Loading book...</div>}
       </div>
     </div>
   );

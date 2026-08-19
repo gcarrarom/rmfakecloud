@@ -1,3 +1,9 @@
+# 0.0.48
+
+## Bug fixes
+
+- Render the EPUB spine in one continuous reader document so restoring a page does not visibly walk through chapters or remount the reader when typography changes.
+
 # 0.0.47
 
 ## Bug fixes
