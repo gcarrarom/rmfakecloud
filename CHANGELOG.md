@@ -1,6 +1,6 @@
 # Unreleased
 
-# 0.0.38
+# 0.0.39
 
 ## Features
 
@@ -11,6 +11,8 @@
 
 - Restore EPUBs to the same position shown in the document list.
 - Add web controls for EPUB chapter navigation and typography.
+- Track EPUB progress by rendered page rather than by chapter.
+- Add direct page jumping and page-by-page navigation.
 
 # 0.0.35
 

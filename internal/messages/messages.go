@@ -94,6 +94,7 @@ type RawMetadata struct {
 	VissibleName      string           `json:"VissibleName"`
 	CurrentPage       int              `json:"CurrentPage"`
 	WebReadingPage    int              `json:"WebReadingPage,omitempty"`
+	WebPageCount      int              `json:"WebPageCount,omitempty"`
 	Bookmarked        bool             `json:"Bookmarked"`
 	Parent            string           `json:"Parent"`
 }

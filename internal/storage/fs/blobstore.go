@@ -460,7 +460,7 @@ func (fs *FileSystemStorage) UpdateBlobDocument(uid, docID, name, parent string)
 }
 
 // UpdateBlobDocumentReadingPosition updates only the reader position in metadata.
-func (fs *FileSystemStorage) UpdateBlobDocumentReadingPosition(uid, docID string, page int) error {
+func (fs *FileSystemStorage) UpdateBlobDocumentReadingPosition(uid, docID string, page, pageCount int) error {
 	tree, err := fs.GetCachedTree(uid)
 	if err != nil {
 		return err
@@ -474,6 +474,9 @@ func (fs *FileSystemStorage) UpdateBlobDocumentReadingPosition(uid, docID string
 		hashDoc.LastOpenedPage = page
 		hashDoc.LastOpened = models.FromTime(time.Now())
 		hashDoc.WebReadingPage = page + 1
+		if pageCount > 0 {
+			hashDoc.WebPageCount = pageCount
+		}
 		metadataHash, metadataReader, err := hashDoc.MetadataReader()
 		if err != nil {
 			return err

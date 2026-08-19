@@ -29,7 +29,7 @@ type backend interface {
 	UpdateDocument(uid, docID, name, parent string) (err error)
 	UpdateRmDoc(uid, docID string, stream io.Reader) (err error)
 	GetReadingProgress(uid, docID string) (*viewmodel.ReadingProgress, error)
-	UpdateReadingProgress(uid, docID string, page int) error
+	UpdateReadingProgress(uid, docID string, page, pageCount int) error
 	DeleteDocument(uid, docID string) (err error)
 	Sync(uid string)
 }
@@ -54,7 +54,7 @@ type blobHandler interface {
 	CreateBlobDocument(uid, name, parent string, reader io.Reader) (doc *storage.Document, err error)
 	UpdateBlobDocument(uid, docID, name, parent string) (err error)
 	UpdateBlobDocumentFromRmDoc(uid, docID string, reader io.Reader) (err error)
-	UpdateBlobDocumentReadingPosition(uid, docID string, page int) error
+	UpdateBlobDocumentReadingPosition(uid, docID string, page, pageCount int) error
 	DeleteBlobDocument(uid, docID string) (err error)
 	CreateBlobFolder(uid, name, parent string) (doc *storage.Document, err error)
 	Export(uid, docid string) (io.ReadCloser, error)

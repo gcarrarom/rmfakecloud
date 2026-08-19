@@ -324,7 +324,7 @@ func (app *ReactAppWrapper) updateReadingProgress(c *gin.Context) {
 		badReq(c, err.Error())
 		return
 	}
-	if err := app.getBackend(c).UpdateReadingProgress(userID(c), common.ParamS(docIDParam, c), update.CurrentPage); err != nil {
+	if err := app.getBackend(c).UpdateReadingProgress(userID(c), common.ParamS(docIDParam, c), update.CurrentPage, update.PageCount); err != nil {
 		log.Error("unable to update reading progress: ", err)
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Alert, Button, ButtonGroup, Form, Spinner } from "react-bootstrap";
 import Navbar from "react-bootstrap/Navbar";
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa6";
@@ -42,8 +42,9 @@ function chapterHtml(id, chapterPath, source, settings) {
   });
   const body = document.body || document.documentElement;
   return `<!doctype html><html><head><meta charset="utf-8"><style>
-    body { font-size: ${settings.fontSize}px; line-height: ${settings.lineHeight}; font-family: ${settings.fontFamily}; max-width: 48rem; margin: 0 auto; padding: 2rem 1rem 4rem; color: #202124; }
-    img { max-width: 100%; height: auto; } a { color: #1769aa; } h1,h2,h3 { line-height: 1.25; }
+    html, body { margin: 0; padding: 0; }
+    body { font-size: ${settings.fontSize}px; line-height: ${settings.lineHeight}; font-family: ${settings.fontFamily}; color: #202124; height: 100vh; column-width: calc(100vw - 2rem); column-gap: 2rem; column-fill: auto; overflow: hidden; }
+    body > * { break-inside: avoid; } img { max-width: 100%; height: auto; } a { color: #1769aa; } h1,h2,h3 { line-height: 1.25; }
   </style></head><body>${body.innerHTML}</body></html>`;
 }
 
@@ -62,23 +63,33 @@ async function loadChapters(id) {
     href: resourcePath(packagePath, item.getAttribute("href") || ""),
     title: item.getAttribute("title") || "",
   }));
-  return Array.from(opf.querySelectorAll("spine > itemref"))
+  const chapters = Array.from(opf.querySelectorAll("spine > itemref"))
     .map((itemref) => manifest.get(itemref.getAttribute("idref")))
     .filter(Boolean);
+  if (!chapters.length) throw new Error("EPUB has no readable chapters");
+  return chapters;
+}
+
+function sumPages(pageCounts, until) {
+  return pageCounts.reduce((total, count, index) => total + (index < until ? count || 0 : 0), 0);
 }
 
 export default function EpubViewer({ file, onSelect }) {
   const { data } = file;
+  const iframeRef = useRef(null);
   const [chapters, setChapters] = useState([]);
   const [chapter, setChapter] = useState(0);
+  const [page, setPage] = useState(0);
+  const [targetPage, setTargetPage] = useState(1);
   const [contents, setContents] = useState({});
+  const [pageCounts, setPageCounts] = useState([]);
   const [progressLoaded, setProgressLoaded] = useState(false);
+  const [restoring, setRestoring] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [fontSize, setFontSize] = useState(18);
   const [fontFamily, setFontFamily] = useState("system-ui, sans-serif");
   const [lineHeight, setLineHeight] = useState(1.65);
-  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -86,7 +97,7 @@ export default function EpubViewer({ file, onSelect }) {
     Promise.all([loadChapters(data.id), apiservice.getReadingProgress(data.id)]).then(([book, progress]) => {
       if (cancelled) return;
       setChapters(book);
-      setChapter(Math.min(Math.max((progress.currentPage || 1) - 1, 0), book.length - 1));
+      setTargetPage(progress.currentPage || 1);
       setProgressLoaded(true);
       setLoading(false);
     }).catch((reason) => {
@@ -94,6 +105,7 @@ export default function EpubViewer({ file, onSelect }) {
         setError(reason.message || "Failed to load EPUB");
         setLoading(false);
         setProgressLoaded(true);
+        setRestoring(false);
       }
     });
     return () => { cancelled = true; };
@@ -104,68 +116,145 @@ export default function EpubViewer({ file, onSelect }) {
     let cancelled = false;
     const indices = [chapter, chapter + 1, chapter - 1].filter((index) => index >= 0 && index < chapters.length);
     Promise.all(indices.map(async (index) => {
-      if (contents[index] && reloadKey === 0) return null;
+      if (contents[index]) return null;
       const source = await textResource(data.id, chapters[index].href);
       return [index, chapterHtml(data.id, chapters[index].href, source, { fontSize, fontFamily, lineHeight })];
     })).then((loaded) => {
       if (cancelled) return;
-      setContents((current) => Object.fromEntries([
-        ...Object.entries(current),
-        ...loaded.filter(Boolean),
-      ]));
+      setContents((current) => Object.fromEntries([...Object.entries(current), ...loaded.filter(Boolean)]));
     }).catch(() => {});
     return () => { cancelled = true; };
-  }, [data.id, chapter, chapters.length, reloadKey]);
+  }, [data.id, chapter, chapters.length, contents, fontSize, fontFamily, lineHeight]);
 
   useEffect(() => {
-    setContents({});
-    setReloadKey((value) => value + 1);
-  }, [fontSize, fontFamily, lineHeight]);
-
-  useEffect(() => {
-    if (!progressLoaded || !chapters.length) return undefined;
-    const timeout = setTimeout(() => apiservice.updateReadingProgress(data.id, chapter + 1).catch(() => {}), 400);
+    if (!progressLoaded || !chapters.length || restoring || !pageCounts[chapter]) return undefined;
+    const currentPage = sumPages(pageCounts, chapter) + page + 1;
+    const knownPageCount = pageCounts.length === chapters.length && pageCounts.every(Boolean)
+      ? pageCounts.reduce((total, count) => total + count, 0)
+      : 0;
+    const timeout = setTimeout(() => apiservice.updateReadingProgress(data.id, currentPage, knownPageCount).catch(() => {}), 400);
     return () => clearTimeout(timeout);
-  }, [data.id, chapter, chapters.length, progressLoaded]);
+  }, [data.id, page, chapter, pageCounts, progressLoaded, restoring]);
+
+  useEffect(() => {
+    const document = iframeRef.current?.contentDocument;
+    const width = document?.documentElement?.clientWidth;
+    if (width) iframeRef.current.contentWindow.scrollTo(page * width, 0);
+  }, [chapter, page, contents]);
+
+  const onChapterMeasured = () => {
+    const document = iframeRef.current?.contentDocument;
+    const width = document?.documentElement?.clientWidth || 1;
+    const scrollWidth = document?.documentElement?.scrollWidth || width;
+    const measured = Math.max(1, Math.ceil(scrollWidth / width));
+    setPageCounts((current) => {
+      const next = [...current];
+      next[chapter] = measured;
+      if (restoring) {
+        const before = sumPages(next, chapter);
+        if (targetPage <= before + measured) {
+          setPage(Math.max(0, targetPage - before - 1));
+          setRestoring(false);
+        } else if (chapter + 1 < chapters.length) {
+          setPage(0);
+          setChapter(chapter + 1);
+        } else {
+          setPage(Math.max(0, measured - 1));
+          setRestoring(false);
+        }
+      } else {
+        setPage((currentPage) => Math.min(currentPage, measured - 1));
+      }
+      return next;
+    });
+  };
+
+  const moveToPage = (nextPage) => {
+    const chapterPages = pageCounts[chapter] || 1;
+    setRestoring(false);
+    setPage(Math.min(Math.max(nextPage, 0), chapterPages - 1));
+  };
+
+  const movePrevious = () => {
+    if (page > 0) return moveToPage(page - 1);
+    if (chapter > 0) {
+      setRestoring(false);
+      setChapter(chapter - 1);
+      setPage(Math.max(0, (pageCounts[chapter - 1] || 1) - 1));
+    }
+  };
+
+  const moveNext = () => {
+    if (page + 1 < (pageCounts[chapter] || 1)) return moveToPage(page + 1);
+    if (chapter + 1 < chapters.length) {
+      setRestoring(false);
+      setChapter(chapter + 1);
+      setPage(0);
+    }
+  };
+
+  const jumpToGlobalPage = (value) => {
+    const requested = Number(value);
+    if (!Number.isInteger(requested) || requested < 1) return;
+    let remaining = requested;
+    for (let index = 0; index < pageCounts.length; index += 1) {
+      const count = pageCounts[index] || 0;
+      if (count && remaining <= count) {
+        setRestoring(false);
+        setChapter(index);
+        setPage(remaining - 1);
+        return;
+      }
+      remaining -= count;
+    }
+    setTargetPage(requested);
+    setRestoring(true);
+    setChapter(0);
+    setPage(0);
+  };
+
+  const resetTypography = (setter, value) => {
+    setContents({});
+    setter(value);
+    setPageCounts([]);
+    setRestoring(false);
+    setPage(0);
+  };
 
   if (loading) return <div className="text-center p-5"><Spinner animation="border" /> Loading EPUB...</div>;
   if (error) return <Alert variant="danger" className="m-3">{error}</Alert>;
   const current = chapters[chapter];
+  const globalPage = sumPages(pageCounts, chapter) + page + 1;
+  const knownTotal = pageCounts.reduce((total, count) => total + (count || 0), 0);
   return (
     <div className={styles.viewerShell}>
       <Navbar className={styles.breadcrumbBar}><NameTag node={file} onSelect={onSelect} /></Navbar>
-      <Navbar className={styles.toolbar}>
+      <Navbar className={`${styles.toolbar} flex-wrap gap-2`}>
         <div className={styles.pageStatus}>
-          <ButtonGroup aria-label="Chapter navigation">
-            <Button size="sm" variant="outline-secondary" disabled={chapter === 0} onClick={() => setChapter((value) => Math.max(value - 1, 0))}><FaChevronLeft /></Button>
-            <Button size="sm" variant="outline-secondary" disabled={chapter === chapters.length - 1} onClick={() => setChapter((value) => Math.min(value + 1, chapters.length - 1))}><FaChevronRight /></Button>
+          <ButtonGroup aria-label="Page navigation">
+            <Button size="sm" variant="outline-secondary" disabled={chapter === 0 && page === 0} onClick={movePrevious}><FaChevronLeft /></Button>
+            <Button size="sm" variant="outline-secondary" disabled={chapter === chapters.length - 1 && page + 1 >= (pageCounts[chapter] || 1)} onClick={moveNext}><FaChevronRight /></Button>
           </ButtonGroup>
-          <span style={{ margin: "0 10px" }}>Progress: {Math.round(((chapter + 1) / chapters.length) * 100)}%</span>
+          <span style={{ margin: "0 10px" }}>Page {globalPage}{knownTotal ? ` of ${knownTotal}${pageCounts.length < chapters.length ? "+" : ""}` : ""}</span>
         </div>
         <div className="d-flex align-items-center gap-2 flex-wrap">
-          <Form.Select size="sm" value={chapter} onChange={(event) => setChapter(Number(event.target.value))} aria-label="Jump to chapter" style={{ width: "12rem" }}>
+          <Form.Control size="sm" type="number" min="1" value={globalPage} onChange={(event) => jumpToGlobalPage(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") jumpToGlobalPage(event.target.value); }} aria-label="Jump to page" style={{ width: "6rem" }} />
+          <Form.Select size="sm" value={chapter} onChange={(event) => { setRestoring(false); setChapter(Number(event.target.value)); setPage(0); }} aria-label="Jump to chapter" style={{ width: "12rem" }}>
             {chapters.map((item, index) => <option key={item.href} value={index}>{item.title || `Chapter ${index + 1}`}</option>)}
           </Form.Select>
-          <Form.Control size="sm" type="number" min="1" max={chapters.length} value={chapter + 1} onChange={(event) => {
-            const value = Number(event.target.value);
-            if (value >= 1 && value <= chapters.length) setChapter(value - 1);
-          }} aria-label="Chapter number" style={{ width: "5rem" }} />
-          <Form.Select size="sm" value={fontSize} onChange={(event) => setFontSize(Number(event.target.value))} aria-label="Font size" style={{ width: "7rem" }}>
+          <Form.Select size="sm" value={fontSize} onChange={(event) => resetTypography(setFontSize, Number(event.target.value))} aria-label="Font size" style={{ width: "7rem" }}>
             {[14, 16, 18, 20, 22, 24, 28].map((size) => <option key={size} value={size}>{size}px</option>)}
           </Form.Select>
-          <Form.Select size="sm" value={fontFamily} onChange={(event) => setFontFamily(event.target.value)} aria-label="Font family" style={{ width: "9rem" }}>
-            <option value="system-ui, sans-serif">System</option>
-            <option value="Georgia, serif">Serif</option>
-            <option value="Arial, sans-serif">Arial</option>
-            <option value="monospace">Mono</option>
+          <Form.Select size="sm" value={fontFamily} onChange={(event) => resetTypography(setFontFamily, event.target.value)} aria-label="Font family" style={{ width: "9rem" }}>
+            <option value="system-ui, sans-serif">System</option><option value="Georgia, serif">Serif</option><option value="Arial, sans-serif">Arial</option><option value="monospace">Mono</option>
           </Form.Select>
-          <Form.Select size="sm" value={lineHeight} onChange={(event) => setLineHeight(Number(event.target.value))} aria-label="Line spacing" style={{ width: "7rem" }}>
+          <Form.Select size="sm" value={lineHeight} onChange={(event) => resetTypography(setLineHeight, Number(event.target.value))} aria-label="Line spacing" style={{ width: "7rem" }}>
             {[1.4, 1.65, 1.9, 2.2].map((spacing) => <option key={spacing} value={spacing}>Line {spacing}</option>)}
           </Form.Select>
         </div>
       </Navbar>
       <div className={styles.viewerContent}>
-        {contents[chapter] ? <iframe key={current.href} title={current.title || `Chapter ${chapter + 1}`} sandbox="allow-same-origin" srcDoc={contents[chapter]} style={{ width: "100%", height: "100%", minHeight: "32rem", border: 0 }} /> : <div className="text-center p-5"><Spinner animation="border" /> Loading chapter...</div>}
+        {contents[chapter] ? <iframe ref={iframeRef} key={`${current.href}-${fontSize}-${fontFamily}-${lineHeight}`} title={current.title || `Chapter ${chapter + 1}`} onLoad={onChapterMeasured} sandbox="allow-same-origin" srcDoc={contents[chapter]} style={{ width: "100%", height: "100%", minHeight: "32rem", border: 0 }} /> : <div className="text-center p-5"><Spinner animation="border" /> Loading page...</div>}
       </div>
     </div>
   );

@@ -110,7 +110,7 @@ func DocTreeFromHashTree(tree *models.HashTree) *DocumentTree {
 			LastModified: lastModified,
 			FileType:     d.PayloadType,
 			CurrentPage:  currentPage,
-			PageCount:    d.PageCount,
+			PageCount:    PageCountForUI(d.PageCount, d.WebPageCount),
 			Size:         d.Size,
 		})
 	}
@@ -226,6 +226,14 @@ type ReadingProgress struct {
 
 type UpdateReadingProgress struct {
 	CurrentPage int `json:"currentPage" binding:"min=1"`
+	PageCount   int `json:"pageCount,omitempty"`
+}
+
+func PageCountForUI(contentPageCount, webPageCount int) int {
+	if webPageCount > 0 {
+		return webPageCount
+	}
+	return contentPageCount
 }
 
 // DocumentList is a list of documents

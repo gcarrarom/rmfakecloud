@@ -152,11 +152,11 @@ class ApiServices {
     });
   }
 
-  updateReadingProgress(id, currentPage) {
+  updateReadingProgress(id, currentPage, pageCount) {
     return fetch(`${constants.ROOT_URL}/documents/${id}/progress`, {
       method: "PUT",
       headers: this.header(),
-      body: JSON.stringify({ currentPage }),
+      body: JSON.stringify({ currentPage, ...(pageCount > 0 ? { pageCount } : {}) }),
     }).then((r) => handleError(r));
   }
 
