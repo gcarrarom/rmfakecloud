@@ -25,7 +25,7 @@ const (
 	CacheDir                = ".cache"
 	Archive                 = "archive"
 	SyncFolder              = "sync"
-	renderedPDFCacheVersion = "v2"
+	renderedPDFCacheVersion = exporter.PDFGenerationVersion
 )
 
 // FileSystemStorage store everything to disk

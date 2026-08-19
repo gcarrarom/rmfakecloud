@@ -6,6 +6,12 @@ import (
 	"testing"
 )
 
+func TestPDFGenerationVersionIsExplicit(t *testing.T) {
+	if PDFGenerationVersion == "" {
+		t.Fatal("PDFGenerationVersion must identify the current PDF renderer")
+	}
+}
+
 func TestDetectRmVersion(t *testing.T) {
 	tests := []struct {
 		name    string

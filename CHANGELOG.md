@@ -1,4 +1,9 @@
-# Unreleased
+# 0.0.43
+
+## Bug fixes
+
+- Fix generated PDF page ordering, page numbering, and trailing blank pages.
+- Version the PDF renderer cache so renderer changes regenerate existing PDFs.
 
 # 0.0.42
 

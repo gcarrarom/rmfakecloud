@@ -99,21 +99,22 @@ func (p *PdfGenerator) generateAnnotationsOnly(zip *MyArchive, output io.Writer)
 
 	// Create PDF surface
 	pdfSurface := cairo.NewPDFSurface(tmpPath, firstWidth, firstHeight, cairo.PDF_VERSION_1_5)
-	defer pdfSurface.Finish()
 
-	pageCount := 0
-	for _, pageAnnotations := range zip.Pages {
+	// Filter before rendering so ShowPage is only used between actual output
+	// pages. Calling it after the final page creates a trailing blank page.
+	pageIndices := make([]int, 0, len(zip.Pages))
+	for i := range zip.Pages {
+		if p.options.AllPages || zip.Pages[i].Data != nil {
+			pageIndices = append(pageIndices, i)
+		}
+	}
+
+	for pageIndex, sourceIndex := range pageIndices {
+		pageAnnotations := zip.Pages[sourceIndex]
 		hasContent := pageAnnotations.Data != nil
 
-		// Skip pages without content unless AllPages is set
-		if !p.options.AllPages && !hasContent {
-			continue
-		}
-
-		pageCount++
-
 		// Set page size (for pages after the first)
-		if pageCount > 1 {
+		if pageIndex > 0 {
 			var pageWidth, pageHeight float64
 			if p.template {
 				pageWidth, pageHeight = rmPageSize.Width, rmPageSize.Height
@@ -145,11 +146,11 @@ func (p *PdfGenerator) generateAnnotationsOnly(zip *MyArchive, output io.Writer)
 
 		// Add page numbers if requested
 		if p.options.AddPageNumbers {
-			p.drawPageNumber(pdfSurface, pageCount, pageWidth, pageHeight)
+			p.drawPageNumber(pdfSurface, pageIndex+1, pageWidth, pageHeight)
 		}
 
-		// Show page (prepare for next page)
-		if pageCount < len(zip.Pages) || p.options.AllPages {
+		// ShowPage is only needed before another rendered page.
+		if pageIndex < len(pageIndices)-1 {
 			pdfSurface.ShowPage()
 		}
 	}
