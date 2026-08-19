@@ -1,12 +1,9 @@
 name: Release
 
 on:
-  workflow_dispatch:
-    inputs:
-      version:
-        description: "Release version from the first CHANGELOG heading, for example 0.0.46"
-        required: true
-        type: string
+  push:
+    branches:
+      - master
 
 jobs:
   release:
@@ -14,53 +11,33 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pull-requests: write
     outputs:
-      version: ${{ steps.validate.outputs.version }}
+      version: ${{ steps.version.outputs.version }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Validate release version
-        id: validate
-        env:
-          REQUESTED_VERSION: ${{ inputs.version }}
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '21'
+
+      - name: Configure git
         run: |
-          version="v${REQUESTED_VERSION#v}"
-          if [[ ! "$version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Version must be semantic version x.y.z, with an optional leading v"
-            exit 1
-          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          changelog_version=$(awk '/^# [0-9]+\.[0-9]+\.[0-9]+$/ { print $2; exit }' CHANGELOG.md)
-          if [[ "$changelog_version" != "${version#v}" ]]; then
-            echo "CHANGELOG.md starts at ${changelog_version:-<missing>}, requested ${version#v}"
-            exit 1
-          fi
-
-          if git ls-remote --exit-code origin "refs/tags/$version" >/dev/null 2>&1; then
-            echo "Tag $version already exists; refusing to create another release"
-            exit 1
-          fi
-
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-
-      - name: Create tag
-        env:
-          VERSION: ${{ steps.validate.outputs.version }}
-        run: |
-          git tag -a "$VERSION" "$GITHUB_SHA" -m "Release $VERSION"
-          git push origin "$VERSION"
-
-      - name: Create GitHub release
-        uses: softprops/action-gh-release@v2
+      - name: Release
+        run: npx release-it
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ steps.validate.outputs.version }}
-          name: ${{ steps.validate.outputs.version }}
-          generate_release_notes: true
+
+      - name: Get version
+        id: version
+        run: echo "version=$(git describe --tags)" >> "$GITHUB_OUTPUT"
 
   build:
     name: Build Binaries

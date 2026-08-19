@@ -1,16 +1,10 @@
 # Releasing
 
-Releases are manual and use one version source: the first version heading in `CHANGELOG.md`.
+Releases are automatic. A push to `master` triggers `release-it`, which calculates the next patch version from the latest Git tag, creates the release commit and tag, and publishes the GitHub release.
 
-1. Add the next release heading to `CHANGELOG.md`, for example `# 0.0.46`.
-2. Commit and push that change to `master`.
-3. Dispatch the workflow with GitHub CLI:
+1. Add the release notes to `CHANGELOG.md` using the repository's numbered-heading format.
+2. Commit and push the intended changes to `master`.
+3. Watch the automatically triggered **Release** workflow.
+4. Verify the tag, GitHub release assets, Helm chart, and container tags (`latest` and the numeric version).
 
-   `gh workflow run release.yml --ref master -f version=0.0.46`
-
-   Or open GitHub Actions, run **Release**, and set `version` to `0.0.46`.
-4. Watch the workflow and verify the release artifacts.
-
-The workflow refuses to run when the requested version does not match the first changelog heading or when its Git tag already exists. It creates exactly that tag and GitHub release, then builds the binaries, Helm chart, and container from that exact tag. It does not calculate or increment versions automatically.
-
-Pushing `master` alone does not create a release. A release is complete only after the dispatched workflow succeeds and the tag, GitHub release assets, Helm chart, and container tags (`latest` and the numeric version) have been verified.
+The release workflow uses `.release-it.json` and must remain the only release mechanism. Do not dispatch it manually, create tags locally, or manually bump Helm versions. The build and container jobs consume the tag created by `release-it`; the container publishes both `latest` and the numeric release tag.
