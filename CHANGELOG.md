@@ -1,3 +1,9 @@
+# 0.0.49
+
+## Internal change
+
+- Remove binary and Helm packaging from releases; releases now build and publish only the container image.
+
 # 0.0.48
 
 ## Bug fixes
