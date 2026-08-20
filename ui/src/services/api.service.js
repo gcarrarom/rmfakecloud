@@ -115,6 +115,13 @@ class ApiServices {
       return r.json();
     });
   }
+
+  sync() {
+    return fetch(`${constants.ROOT_URL}/sync`, {
+      method: "GET",
+      headers: this.header(),
+    }).then((r) => handleError(r));
+  }
   getCode() {
     return fetch(`${constants.ROOT_URL}/newcode`, {
       method: "GET",

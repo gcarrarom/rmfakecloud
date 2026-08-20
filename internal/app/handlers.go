@@ -752,6 +752,10 @@ func (app *App) syncUpdateRootV3(c *gin.Context) {
 	uid := userID(c)
 	newgeneration, err := app.blobStorer.StoreBlob(uid, RootHash, bytes.NewBufferString(rootv3.Hash), rootv3.Generation)
 	if err != nil {
+		if err == fs.ErrorWrongGeneration {
+			c.AbortWithStatus(http.StatusPreconditionFailed)
+			return
+		}
 		log.Error(err)
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return

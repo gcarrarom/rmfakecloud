@@ -66,6 +66,11 @@ export default function FileViewer({ file, onSelect }) {
 
   const { pdfData, error: pdfError, loading: pdfLoading } = usePdfData(file.id, !isEpub);
 
+  useEffect(() => {
+    // Opening a document gives connected tablets a chance to reconcile stale sync state.
+    apiservice.sync().catch(() => {});
+  }, [data.id]);
+
   const [viewMode, setViewMode] = useState("pdf"); // "pdf", "rmdoc", or "markdown"
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(1);

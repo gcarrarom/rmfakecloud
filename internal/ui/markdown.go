@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/ddvk/rmfakecloud/internal/common"
+	"github.com/ddvk/rmfakecloud/internal/storage/exporter"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/jung-kurt/gofpdf"
@@ -208,6 +209,27 @@ func updateRmdocWithMarkdown(data []byte, source string) ([]byte, error) {
 	}
 
 	docID := strings.TrimSuffix(filepath.Base(reader.File[contentEntryIndex].Name), ".content")
+	archiveVersion := exporter.VersionUnknown
+	for _, entry := range reader.File {
+		if !strings.HasSuffix(entry.Name, ".rm") {
+			continue
+		}
+		file, openErr := entry.Open()
+		if openErr != nil {
+			return nil, openErr
+		}
+		header := make([]byte, exporter.HeaderSizeV6)
+		_, readErr := io.ReadFull(file, header)
+		file.Close()
+		if readErr != nil {
+			return nil, fmt.Errorf("rmdoc: cannot read page header: %w", readErr)
+		}
+		archiveVersion, readErr = exporter.DetectRmVersionFromBytes(header)
+		if readErr != nil {
+			return nil, fmt.Errorf("rmdoc: invalid .rm page header in %s: %w", entry.Name, readErr)
+		}
+		break
+	}
 	pageIDs := make([]string, 0, pageCount)
 	if existing, ok := content["pages"].([]interface{}); ok {
 		for _, page := range existing {
@@ -217,6 +239,9 @@ func updateRmdocWithMarkdown(data []byte, source string) ([]byte, error) {
 		}
 	}
 	existingPageCount := len(pageIDs)
+	if archiveVersion == exporter.VersionV6 && pageCount > existingPageCount {
+		return nil, errors.New("rmdoc: cannot add Markdown pages to a v6 document without a v6 page encoder")
+	}
 	for len(pageIDs) < pageCount {
 		pageIDs = append(pageIDs, uuid.NewString())
 	}

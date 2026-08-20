@@ -1,3 +1,11 @@
+# 0.0.54
+
+## Bug fixes
+
+- Notify connected tablets to reconcile stale sync state whenever a document is opened in the web interface.
+- Return `412 Precondition Failed` for stale sync root generations instead of `500 Internal Server Error`.
+- Reject unsafe Markdown page expansion for v6 documents and invalid `.rm` page headers.
+
 # 0.0.53
 
 ## Features
