@@ -1,3 +1,9 @@
+# 0.0.51
+
+## Bug fixes
+
+- Keep the pnpm lockfile synchronized with the Markdown workspace dependency so CI and production builds install the same UI packages.
+
 # 0.0.50
 
 ## Features
