@@ -189,6 +189,90 @@
     height: 100%;
 }
 
+.markdownWorkspace {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+}
+
+.markdownToolbar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.markdownHint {
+    color: $foreground2;
+    font-size: 0.85rem;
+}
+
+.markdownPanels {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 1rem;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    padding: 0 0.5rem 0.5rem;
+}
+
+.markdownModeedit, .markdownModepreview {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.markdownSource {
+    min-height: 20rem;
+    resize: none;
+    font-family: monospace;
+    white-space: pre;
+}
+
+.markdownPreview {
+    overflow: auto;
+    background: #e9e9e9;
+    padding: 1rem;
+}
+
+.markdownPage {
+    position: relative;
+    width: min(100%, 42rem);
+    min-height: 53rem;
+    margin: 0 auto 1rem;
+    padding: 3rem;
+    background: white;
+    color: #202020;
+    box-shadow: 0 1px 5px rgba(0, 0, 0, .2);
+}
+
+.markdownBackground {
+    position: relative;
+    z-index: 1;
+}
+
+.markdownAnnotations {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+@media (max-width: 767.98px) {
+    .markdownPanels {
+        grid-template-columns: minmax(0, 1fr);
+        overflow: auto;
+    }
+
+    .markdownPage {
+        min-height: 40rem;
+        padding: 1.5rem;
+    }
+}
+
 .pageStatus {
     display: flex;
     align-items: center;

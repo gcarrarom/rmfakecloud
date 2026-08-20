@@ -1,3 +1,12 @@
+# 0.0.50
+
+## Features
+
+- Add a browser Markdown workspace with edit, preview, and split modes.
+- Persist Markdown source separately from synchronized reMarkable documents.
+- Overlay synchronized reMarkable annotations on Markdown previews.
+- Support `---` Markdown page breaks for aligning browser previews with tablet pages.
+
 # 0.0.49
 
 ## Internal change

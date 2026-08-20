@@ -186,6 +186,27 @@ class ApiServices {
     });
   }
 
+  getMarkdown(id) {
+    return fetch(`${constants.ROOT_URL}/documents/${id}/markdown`, {
+      method: "GET",
+      headers: this.header(),
+    }).then((r) => {
+      handleError(r);
+      return r.json();
+    });
+  }
+
+  updateMarkdown(id, source, baseVersion) {
+    return fetch(`${constants.ROOT_URL}/documents/${id}/markdown`, {
+      method: "PUT",
+      headers: this.header(),
+      body: JSON.stringify({ source, baseVersion }),
+    }).then((r) => {
+      handleError(r);
+      return r.json();
+    });
+  }
+
   createFolder(data) {
     return fetch(`${constants.ROOT_URL}/folders`, {
       method: "POST",
