@@ -1,3 +1,11 @@
+# 0.0.53
+
+## Features
+
+- Render saved Markdown into a fixed-layout PDF payload for the linked reMarkable document.
+- Preserve existing reMarkable annotation layers while updating the Markdown background.
+- Support tablet page creation from Markdown `---` page breaks.
+
 # 0.0.52
 
 ## Features

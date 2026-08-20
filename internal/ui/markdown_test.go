@@ -22,3 +22,18 @@ func TestNewMarkdownArchiveIsReadable(t *testing.T) {
 	require.Equal(t, docID, document.UUID)
 	require.Len(t, document.Pages, 1)
 }
+
+func TestUpdateRmdocWithMarkdownAddsPdfPayloadAndPages(t *testing.T) {
+	reader, _, err := newMarkdownArchive("Meeting notes")
+	require.NoError(t, err)
+	original, err := io.ReadAll(reader)
+	require.NoError(t, err)
+
+	updated, err := updateRmdocWithMarkdown(original, "# Notes\n\nFirst page\n---\nSecond page")
+	require.NoError(t, err)
+
+	document := &archive.Zip{}
+	require.NoError(t, document.Read(bytes.NewReader(updated), int64(len(updated))))
+	require.Len(t, document.Pages, 2)
+	require.NotEmpty(t, document.Payload)
+}

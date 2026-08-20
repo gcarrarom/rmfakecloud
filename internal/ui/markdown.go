@@ -11,11 +11,14 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/ddvk/rmfakecloud/internal/common"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/jung-kurt/gofpdf"
 )
 
 type markdownDocument struct {
@@ -73,10 +76,7 @@ func newMarkdownArchive(name string) (io.Reader, string, error) {
 	if err != nil {
 		return nil, "", err
 	}
-	rmBytes := make([]byte, 51)
-	copy(rmBytes, "reMarkable .lines file, version=5          ")
-	binary.LittleEndian.PutUint32(rmBytes[43:47], 1) // one empty layer
-	// The remaining four bytes are the line count for that layer.
+	rmBytes := emptyRmPage()
 
 	var archive bytes.Buffer
 	writer := zip.NewWriter(&archive)
@@ -104,6 +104,181 @@ func newMarkdownArchive(name string) (io.Reader, string, error) {
 		return nil, "", err
 	}
 	return bytes.NewReader(archive.Bytes()), docID, nil
+}
+
+func emptyRmPage() []byte {
+	data := make([]byte, 51)
+	copy(data, "reMarkable .lines file, version=5          ")
+	binary.LittleEndian.PutUint32(data[43:47], 1) // one empty layer
+	return data
+}
+
+func renderMarkdownPDF(source string) ([]byte, int, error) {
+	pdf := gofpdf.New("P", "pt", "", "")
+	pdf.SetTitle("Markdown document", false)
+	pdf.SetMargins(32, 32, 32)
+	pdf.SetAutoPageBreak(true, 32)
+	pageSources := strings.Split(source, "\n---\n")
+	if len(pageSources) == 0 {
+		pageSources = []string{""}
+	}
+
+	for _, pageSource := range pageSources {
+		pdf.AddPageFormat("P", gofpdf.SizeType{Wd: 445, Ht: 594})
+		inCode := false
+		for _, rawLine := range strings.Split(strings.ReplaceAll(pageSource, "\r\n", "\n"), "\n") {
+			line := strings.TrimRight(rawLine, "\r")
+			if strings.HasPrefix(strings.TrimSpace(line), "```") {
+				inCode = !inCode
+				continue
+			}
+			if inCode {
+				pdf.SetFont("Courier", "", 8)
+				pdf.MultiCell(381, 11, line, "", "L", false)
+				continue
+			}
+
+			trimmed := strings.TrimSpace(line)
+			if trimmed == "" {
+				pdf.Ln(8)
+				continue
+			}
+			fontSize := 11.0
+			fontStyle := ""
+			if strings.HasPrefix(trimmed, "### ") {
+				fontSize, fontStyle, trimmed = 14, "B", strings.TrimPrefix(trimmed, "### ")
+			} else if strings.HasPrefix(trimmed, "## ") {
+				fontSize, fontStyle, trimmed = 17, "B", strings.TrimPrefix(trimmed, "## ")
+			} else if strings.HasPrefix(trimmed, "# ") {
+				fontSize, fontStyle, trimmed = 21, "B", strings.TrimPrefix(trimmed, "# ")
+			} else if strings.HasPrefix(trimmed, "- ") || strings.HasPrefix(trimmed, "* ") {
+				trimmed = "- " + strings.TrimSpace(trimmed[2:])
+			} else if len(trimmed) > 2 && trimmed[0] >= '0' && trimmed[0] <= '9' {
+				if dot := strings.Index(trimmed, ". "); dot > 0 {
+					if _, err := strconv.Atoi(trimmed[:dot]); err == nil {
+						trimmed = trimmed[:dot+2] + trimmed[dot+2:]
+					}
+				}
+			}
+			trimmed = strings.ReplaceAll(trimmed, "**", "")
+			trimmed = strings.ReplaceAll(trimmed, "`", "")
+			pdf.SetFont("Helvetica", fontStyle, fontSize)
+			pdf.MultiCell(381, fontSize+4, trimmed, "", "L", false)
+		}
+	}
+
+	var output bytes.Buffer
+	if err := pdf.Output(&output); err != nil {
+		return nil, 0, err
+	}
+	return output.Bytes(), len(pageSources), nil
+}
+
+func updateRmdocWithMarkdown(data []byte, source string) ([]byte, error) {
+	pdfData, pageCount, err := renderMarkdownPDF(source)
+	if err != nil {
+		return nil, err
+	}
+	reader, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
+	if err != nil {
+		return nil, err
+	}
+	contentEntryIndex := -1
+	var content map[string]interface{}
+	for index, entry := range reader.File {
+		if strings.HasSuffix(entry.Name, ".content") {
+			contentEntryIndex = index
+			file, openErr := entry.Open()
+			if openErr != nil {
+				return nil, openErr
+			}
+			contentBytes, readErr := io.ReadAll(file)
+			file.Close()
+			if readErr != nil {
+				return nil, readErr
+			}
+			if err := json.Unmarshal(contentBytes, &content); err != nil {
+				return nil, err
+			}
+			break
+		}
+	}
+	if contentEntryIndex < 0 {
+		return nil, errors.New("rmdoc: no content file found")
+	}
+
+	docID := strings.TrimSuffix(filepath.Base(reader.File[contentEntryIndex].Name), ".content")
+	pageIDs := make([]string, 0, pageCount)
+	if existing, ok := content["pages"].([]interface{}); ok {
+		for _, page := range existing {
+			if pageID, ok := page.(string); ok && pageID != "" && len(pageIDs) < pageCount {
+				pageIDs = append(pageIDs, pageID)
+			}
+		}
+	}
+	existingPageCount := len(pageIDs)
+	for len(pageIDs) < pageCount {
+		pageIDs = append(pageIDs, uuid.NewString())
+	}
+	content["fileType"] = "pdf"
+	content["pageCount"] = pageCount
+	content["pages"] = pageIDs
+	contentBytes, err := json.Marshal(content)
+	if err != nil {
+		return nil, err
+	}
+
+	var output bytes.Buffer
+	writer := zip.NewWriter(&output)
+	for index, entry := range reader.File {
+		if index == contentEntryIndex || strings.HasSuffix(entry.Name, ".pdf") {
+			continue
+		}
+		file, err := entry.Open()
+		if err != nil {
+			return nil, err
+		}
+		fileData, readErr := io.ReadAll(file)
+		file.Close()
+		if readErr != nil {
+			return nil, readErr
+		}
+		if strings.HasSuffix(entry.Name, ".pagedata") && pageCount > existingPageCount {
+			fileData = append(fileData, []byte(strings.Repeat("Blank\n", pageCount-existingPageCount))...)
+		}
+		if err := writeZipFile(writer, entry.Name, fileData); err != nil {
+			return nil, err
+		}
+	}
+	if err := writeZipFile(writer, reader.File[contentEntryIndex].Name, contentBytes); err != nil {
+		return nil, err
+	}
+	if err := writeZipFile(writer, docID+".pdf", pdfData); err != nil {
+		return nil, err
+	}
+	for index := existingPageCount; index < pageCount; index++ {
+		pageID := pageIDs[index]
+		if err := writeZipFile(writer, pageID+".rm", emptyRmPage()); err != nil {
+			return nil, err
+		}
+		metadata, _ := json.Marshal(map[string]interface{}{"layers": []map[string]string{{"name": "Layer 1"}}})
+		if err := writeZipFile(writer, pageID+"-metadata.json", metadata); err != nil {
+			return nil, err
+		}
+	}
+	if err := writer.Close(); err != nil {
+		return nil, err
+	}
+	return output.Bytes(), nil
+}
+
+func writeZipFile(writer *zip.Writer, filename string, data []byte) error {
+	entry, err := writer.Create(filename)
+	if err != nil {
+		return err
+	}
+	_, err = entry.Write(data)
+	return err
 }
 
 func (app *ReactAppWrapper) markdownPath(uid, docID string) string {
@@ -135,6 +310,29 @@ func (app *ReactAppWrapper) updateMarkdown(c *gin.Context) {
 		badReq(c, err.Error())
 		return
 	}
+	uid := userID(c)
+	docID := common.ParamS(docIDParam, c)
+	archive, err := app.getBackend(c).Export(uid, docID, "rmdoc", 0)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Markdown tablet sync requires sync 1.5"})
+		return
+	}
+	archiveData, err := io.ReadAll(archive)
+	archive.Close()
+	if err != nil {
+		c.AbortWithStatus(http.StatusInternalServerError)
+		return
+	}
+	updatedArchive, err := updateRmdocWithMarkdown(archiveData, update.Source)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if err := app.getBackend(c).UpdateRmDoc(uid, docID, bytes.NewReader(updatedArchive)); err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
 	document := markdownDocument{
 		Source:      update.Source,
 		UpdatedAt:   time.Now().UTC(),
@@ -145,7 +343,7 @@ func (app *ReactAppWrapper) updateMarkdown(c *gin.Context) {
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
-	path := app.markdownPath(userID(c), common.ParamS(docIDParam, c))
+	path := app.markdownPath(uid, docID)
 	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return
