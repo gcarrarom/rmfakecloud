@@ -207,6 +207,17 @@ class ApiServices {
     });
   }
 
+  createMarkdown(name, parent) {
+    return fetch(`${constants.ROOT_URL}/documents/markdown`, {
+      method: "POST",
+      headers: this.header(),
+      body: JSON.stringify({ name, parent }),
+    }).then((r) => {
+      handleError(r);
+      return r.json();
+    });
+  }
+
   createFolder(data) {
     return fetch(`${constants.ROOT_URL}/folders`, {
       method: "POST",

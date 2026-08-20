@@ -2,11 +2,11 @@ import DocumentTree from "./Tree";
 import apiservice from "../../services/api.service"
 import { useEffect, useRef, useState } from "react";
 import { useParams, useHistory } from "react-router-dom";
-import { Container, Row, Col, Offcanvas } from "react-bootstrap";
+import { Container, Row, Col, Offcanvas, Modal } from "react-bootstrap";
 import File from "./File";
 import Folder from "./Folder";
 import Navbar from 'react-bootstrap/Navbar';
-import { BsList, BsSearch } from "react-icons/bs";
+import { BsList, BsSearch, BsPlus } from "react-icons/bs";
 import Form from 'react-bootstrap/Form';
 import Button from 'react-bootstrap/Button';
 import InputGroup from 'react-bootstrap/InputGroup';
@@ -28,6 +28,9 @@ export default function DocumentList() {
   const [isMobile, setIsMobile] = useState(() => window.matchMedia("(max-width: 767.98px)").matches);
   const [viewportHeight, setViewportHeight] = useState(() => window.innerHeight);
   const [showBrowserDrawer, setShowBrowserDrawer] = useState(false);
+  const [showCreateMarkdown, setShowCreateMarkdown] = useState(false);
+  const [markdownName, setMarkdownName] = useState("");
+  const [creatingMarkdown, setCreatingMarkdown] = useState(false);
 
   const { itemId } = useParams();
   const history = useHistory();
@@ -127,6 +130,25 @@ export default function DocumentList() {
 
   const onUpdate = () => {
     setCounter(prev => prev+1);
+  };
+
+  const createMarkdown = async () => {
+    const name = markdownName.trim();
+    if (!name) return;
+    setCreatingMarkdown(true);
+    try {
+      const parent = selected && !selected.isLeaf ? selected.id : "root";
+      const created = await apiservice.createMarkdown(name, parent);
+      setShowCreateMarkdown(false);
+      setMarkdownName("");
+      setInitialSelectionSet(false);
+      onUpdate();
+      history.push(`/documents/${created.id}`);
+    } catch (error) {
+      toast.error(`Unable to create Markdown document: ${error.message}`);
+    } finally {
+      setCreatingMarkdown(false);
+    }
   };
 
   useEffect(() => {
@@ -304,8 +326,9 @@ export default function DocumentList() {
           <Row ref={contentRowRef} className={styles.contentRow}>
           {!isMobile && <Col xs={12} className={styles.sidebarColumn} style={{ flexBasis: `${sidebarWidth}px` }}>
              <Navbar style={{flexShrink: 0}}>
-               <div className={`${styles.stretch} ${styles.userid}`}>{user.UserID}</div>
-               <Button variant="outline" onClick={() => { setShowSearch(!showSearch); setTerm("") }}><BsSearch/></Button>
+                <div className={`${styles.stretch} ${styles.userid}`}>{user.UserID}</div>
+                <Button variant="outline" onClick={() => setShowCreateMarkdown(true)} title="Create Markdown document" aria-label="Create Markdown document"><BsPlus/></Button>
+                <Button variant="outline" onClick={() => { setShowSearch(!showSearch); setTerm("") }}><BsSearch/></Button>
             </Navbar>
 
             {showSearch && <div style={{flexShrink: 0}}>
@@ -356,6 +379,7 @@ export default function DocumentList() {
           <Offcanvas.Body className={styles.documentDrawerBody}>
             <Navbar style={{flexShrink: 0}}>
               <div className={`${styles.stretch} ${styles.userid}`}>{user.UserID}</div>
+              <Button variant="outline" onClick={() => setShowCreateMarkdown(true)} title="Create Markdown document" aria-label="Create Markdown document"><BsPlus/></Button>
               <Button variant="outline" onClick={() => { setShowSearch(!showSearch); setTerm("") }}><BsSearch/></Button>
             </Navbar>
 
@@ -373,7 +397,30 @@ export default function DocumentList() {
               <DocumentTree selection={selected} onSelect={onSelect} treeRef={treeRef} term={term} entries={entries} height={drawerTreeHeight} />
             </div>
           </Offcanvas.Body>
-        </Offcanvas>
+         </Offcanvas>
+        <Modal show={showCreateMarkdown} onHide={() => !creatingMarkdown && setShowCreateMarkdown(false)}>
+          <Modal.Header closeButton>
+            <Modal.Title>Create Markdown document</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            <Form.Label htmlFor="markdown-document-name">Name</Form.Label>
+            <Form.Control
+              id="markdown-document-name"
+              autoFocus
+              value={markdownName}
+              onChange={(event) => setMarkdownName(event.target.value)}
+              onKeyDown={(event) => { if (event.key === "Enter") createMarkdown(); }}
+              placeholder="Meeting notes"
+              disabled={creatingMarkdown}
+            />
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="secondary" onClick={() => setShowCreateMarkdown(false)} disabled={creatingMarkdown}>Cancel</Button>
+            <Button variant="primary" onClick={createMarkdown} disabled={!markdownName.trim() || creatingMarkdown}>
+              {creatingMarkdown ? "Creating..." : "Create"}
+            </Button>
+          </Modal.Footer>
+        </Modal>
     </Container>
   );
 }

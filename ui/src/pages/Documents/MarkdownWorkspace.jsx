@@ -4,6 +4,7 @@ import { marked } from "marked";
 import { parse } from "remarkable-rm";
 import { Alert, Button, Form, Spinner } from "react-bootstrap";
 import apiservice from "../../services/api.service";
+import NameTag from "../../components/NameTag";
 import styles from "./Documents.module.scss";
 
 const PAGE_WIDTH = 1404;
@@ -120,6 +121,9 @@ export default function MarkdownWorkspace({ file, onSelect }) {
 
   return (
     <div className={styles.markdownWorkspace}>
+      <div className={styles.breadcrumbBar}>
+        <NameTag node={file} onSelect={onSelect} />
+      </div>
       <div className={styles.markdownToolbar}>
         <Button size="sm" variant={mode === "edit" ? "primary" : "outline-secondary"} onClick={() => setMode("edit")}>Edit</Button>
         <Button size="sm" variant={mode === "preview" ? "primary" : "outline-secondary"} onClick={() => setMode("preview")}>Preview</Button>
