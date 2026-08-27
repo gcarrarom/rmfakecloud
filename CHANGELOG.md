@@ -1,3 +1,9 @@
+# 0.0.55
+
+## Bug fixes
+
+- Remove screenshare rooms when their tablet websocket disconnects, avoiding stale sessions that require an application restart.
+
 # 0.0.54
 
 ## Bug fixes

@@ -1212,7 +1212,11 @@ func (app *App) connectWebSocket(c *gin.Context) {
 		return
 	}
 
-	go app.hub.ConnectWs(uid, deviceID, connection)
+	go func() {
+		app.hub.ConnectWs(uid, deviceID, connection)
+		// A disconnected tablet must not leave an active screenshare room behind.
+		app.roomManager.RemoveParticipant(deviceID)
+	}()
 }
 
 func (app *App) screenshareCreateRoom(c *gin.Context) {
