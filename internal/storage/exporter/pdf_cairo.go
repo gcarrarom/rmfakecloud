@@ -12,7 +12,6 @@ import (
 	"github.com/ddvk/rmfakecloud/internal/encoding/rm"
 	"github.com/pdfcpu/pdfcpu/pkg/api"
 	"github.com/pdfcpu/pdfcpu/pkg/pdfcpu/model"
-	"github.com/pdfcpu/pdfcpu/pkg/pdfcpu/types"
 	"github.com/sirupsen/logrus"
 	"github.com/ungerik/go-cairo"
 )
@@ -240,12 +239,7 @@ func (p *PdfGenerator) generateWithBackground(zip *MyArchive, output io.Writer) 
 
 	// Stamp the annotation PDF on top of the original pages. MergeRaw would
 	// concatenate the files and produce annotation-only pages instead.
-	conf := model.NewDefaultConfiguration()
-	wm, err := api.PDFMultiWatermarkForReadSeeker(annFile, 1, 1, "scale:1", true, false, types.POINTS)
-	if err != nil {
-		return fmt.Errorf("failed to create annotation overlay: %w", err)
-	}
-	if err := api.AddWatermarks(bgFile, outFile, nil, wm, conf); err != nil {
+	if err := OverlayPDF(bgFile, annFile, outFile); err != nil {
 		return fmt.Errorf("failed to overlay annotations: %w", err)
 	}
 	outFile.Close()

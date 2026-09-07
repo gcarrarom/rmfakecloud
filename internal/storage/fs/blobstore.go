@@ -294,10 +294,40 @@ func (fs *FileSystemStorage) Export(uid, docid string) (r io.ReadCloser, err err
 				pages = append(pages, rmData)
 			}
 
-			// Use rmc-go library for multipage export (in-process, Cairo renderer)
-			err = exporter.ExportV6MultiPageToPdfNative(pages, writer)
+			// Render annotations first, then stamp them over the original PDF payload.
+			var annotations bytes.Buffer
+			err = exporter.ExportV6MultiPageToPdfNative(pages, &annotations)
 			if err != nil {
 				log.Errorf("Failed to export v6 multipage with rmc-go: %v", err)
+				writer.CloseWithError(err)
+				return
+			}
+
+			var background []byte
+			for _, f := range doc.Files {
+				if filepath.Ext(f.EntryName) != storage.PdfFileExt {
+					continue
+				}
+				payloadReader, payloadErr := ls.GetReader(f.Hash)
+				if payloadErr != nil {
+					writer.CloseWithError(payloadErr)
+					return
+				}
+				background, payloadErr = io.ReadAll(payloadReader)
+				payloadReader.Close()
+				if payloadErr != nil {
+					writer.CloseWithError(payloadErr)
+					return
+				}
+				break
+			}
+			if len(background) > 0 {
+				err = exporter.OverlayPDF(bytes.NewReader(background), bytes.NewReader(annotations.Bytes()), writer)
+			} else {
+				_, err = writer.Write(annotations.Bytes())
+			}
+			if err != nil {
+				log.Errorf("Failed to overlay v6 annotations: %v", err)
 				writer.CloseWithError(err)
 				return
 			}

@@ -1,3 +1,9 @@
+# 0.0.62
+
+## Bug fixes
+
+- Include the original PDF when exporting v6 documents with annotations.
+
 # 0.0.61
 
 ## Bug fixes
