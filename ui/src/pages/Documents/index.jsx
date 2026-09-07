@@ -208,6 +208,17 @@ export default function DocumentList() {
 
   const drawerTreeHeight = Math.max(viewportHeight - 220, 320);
 
+  const folders = [];
+  const collectFolders = (items) => {
+    items.forEach((item) => {
+      if (item.isFolder) {
+        folders.push(item);
+        collectFolders(item.children || []);
+      }
+    });
+  };
+  collectFolders(entries);
+
 	useEffect(() => {
 		const loadDocs = async () => {
 			const { Trash, Entries } = await apiservice.listDocument()
@@ -368,7 +379,7 @@ export default function DocumentList() {
           <Col md={8} xs={12} className={styles.detailColumn}>
             <div className={styles.detailViewport}>
               {selected && selected.isLeaf && <File file={selected} onSelect={onSelect} />}
-              {selected && !selected.isLeaf && <Folder selection={selected} onSelect={onSelect} onUpdate={onUpdate} counter={counter} />}
+               {selected && !selected.isLeaf && <Folder selection={selected} onSelect={onSelect} onUpdate={onUpdate} folders={folders} counter={counter} />}
             </div>
           </Col>
         </Row>
@@ -394,7 +405,7 @@ export default function DocumentList() {
             </div>}
 
             <div className={styles.treeContainer}>
-              <DocumentTree selection={selected} onSelect={onSelect} treeRef={treeRef} term={term} entries={entries} height={drawerTreeHeight} />
+               <DocumentTree selection={selected} onSelect={onSelect} treeRef={treeRef} term={term} entries={entries} height={drawerTreeHeight} />
             </div>
           </Offcanvas.Body>
          </Offcanvas>

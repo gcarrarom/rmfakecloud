@@ -1,3 +1,9 @@
+# 0.0.58
+
+## Features
+
+- Add document and folder rename and move actions to the web interface.
+
 # 0.0.57
 
 ## Bug fixes

@@ -235,6 +235,13 @@ class ApiServices {
       return r.json();
     });
   }
+  updateDocument(documentId, name, parentId) {
+    return fetch(`${constants.ROOT_URL}/documents`, {
+      method: "PUT",
+      headers: this.header(),
+      body: JSON.stringify({ documentId, name, parentId }),
+    }).then((r) => handleError(r));
+  }
   updateuser(usr) {
     return fetch(`${constants.ROOT_URL}/users`, {
       method: "PUT",
