@@ -23,6 +23,7 @@ export default function Folder({ selection, onSelect, onUpdate, folders = [] }) 
   const [showMove, setShowMove] = useState(false);
   const [newName, setNewName] = useState("");
   const [destination, setDestination] = useState("root");
+  const [contextItem, setContextItem] = useState(null);
 
   const folder = selection
 
@@ -73,7 +74,7 @@ export default function Folder({ selection, onSelect, onUpdate, folders = [] }) 
       collectDescendants(child);
     });
   };
-  selectedItems.filter((item) => item.isFolder).forEach(collectDescendants);
+  selectedItems.filter((item) => item.data?.isFolder).forEach(collectDescendants);
   const moveTargets = folders.filter((item) =>
     item.id !== "trash" && !selectedIds.includes(item.id) && !descendants.has(item.id)
   );
@@ -104,6 +105,17 @@ export default function Folder({ selection, onSelect, onUpdate, folders = [] }) 
       toast.error(`Failed to move: ${e.message}`);
     }
   };
+
+  const openContextMenu = (event, item) => {
+    setContextItem(item);
+    setSelectedIds([item.id]);
+    const touch = event?.touches?.[0];
+    if (event?.clientX != null || touch) {
+      setContextMenuPosition({ x: event.clientX ?? touch.clientX, y: event.clientY ?? touch.clientY });
+    }
+  };
+
+  const [contextMenuPosition, setContextMenuPosition] = useState(null);
 
   // this should generally not happen, but just in case
   if (!folder) {
@@ -139,6 +151,7 @@ export default function Folder({ selection, onSelect, onUpdate, folders = [] }) 
         onSelect={onSelect}
         selectedIds={selectedIds}
         onSelectItem={handleSelectItem}
+        onItemContextMenu={openContextMenu}
       />
 
       <Modal show={showCreateFileModal} onHide={() => setShowCreateFolder(false)}>
@@ -171,6 +184,17 @@ export default function Folder({ selection, onSelect, onUpdate, folders = [] }) 
         </Modal.Body>
         <Modal.Footer><Button variant="secondary" onClick={() => setShowMove(false)}>Cancel</Button><Button onClick={move}>Move</Button></Modal.Footer>
       </Modal>
+      {contextMenuPosition && contextItem && (
+        <div
+          className={styles.contextMenu}
+          style={{ left: contextMenuPosition.x, top: contextMenuPosition.y }}
+          onMouseLeave={() => setContextMenuPosition(null)}
+        >
+          <Button variant="link" onClick={() => { setNewName(contextItem.data.name); setShowRename(true); setContextMenuPosition(null); }}>Rename</Button>
+          <Button variant="link" onClick={() => { setShowMove(true); setContextMenuPosition(null); }}>Move</Button>
+          <Button variant="link" onClick={() => { setContextMenuPosition(null); onDeleteClick(); }}>Delete</Button>
+        </div>
+      )}
     </>
   );
 }

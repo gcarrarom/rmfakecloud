@@ -22,7 +22,7 @@ function formatBytes(bytes) {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
-export default function FileListViewer({ listStyle, files, onSelect, counter, selectedIds = [], onSelectItem }) {
+export default function FileListViewer({ listStyle, files, onSelect, counter, selectedIds = [], onSelectItem, onItemContextMenu }) {
   const [isMobile, setIsMobile] = useState(() => window.matchMedia("(max-width: 767.98px)").matches);
 
   useEffect(() => {
@@ -40,6 +40,21 @@ export default function FileListViewer({ listStyle, files, onSelect, counter, se
   const onClickItem = (file) => {
     onSelect(file);
   }
+
+  const itemPointerProps = (item) => {
+    let timer;
+    return {
+      onContextMenu: (event) => {
+        event.preventDefault();
+        onItemContextMenu?.(event, item);
+      },
+      onTouchStart: (event) => {
+        timer = setTimeout(() => onItemContextMenu?.(event, item), 550);
+      },
+      onTouchEnd: () => clearTimeout(timer),
+      onTouchMove: () => clearTimeout(timer),
+    };
+  };
 
   const isFolderClassName = (item) => {
     if (item.isFolder) return "is-folder";
@@ -168,7 +183,7 @@ export default function FileListViewer({ listStyle, files, onSelect, counter, se
       : `${item.children?.length || 0} items`;
 
     return (
-      <div key={row.id} className={styles.mobileFileCard}>
+      <div key={row.id} className={styles.mobileFileCard} {...itemPointerProps(item)}>
         <label className={styles.mobileFileToggle}>
           <input
             type="checkbox"
@@ -207,7 +222,7 @@ export default function FileListViewer({ listStyle, files, onSelect, counter, se
       : `${item.children?.length || 0} items`;
 
     return (
-      <div key={row.id} className={styles.mobileGridCard} onClick={() => onClickItem(item)}>
+      <div key={row.id} className={styles.mobileGridCard} onClick={() => onClickItem(item)} {...itemPointerProps(item)}>
         <label
           className={styles.mobileGridToggle}
           onClick={(event) => event.stopPropagation()}
@@ -230,7 +245,7 @@ export default function FileListViewer({ listStyle, files, onSelect, counter, se
   });
 
   const gridFolderItems = files.filter(file => !file.isLeaf).map(file =>
-    <div className="filegrid-folder-item" key={file.id}>
+    <div className="filegrid-folder-item" key={file.id} {...itemPointerProps(file)}>
       <input
         type="checkbox"
         checked={selectedIds.includes(file.id)}
@@ -246,7 +261,7 @@ export default function FileListViewer({ listStyle, files, onSelect, counter, se
   );
 
   const gridFileItems = files.filter(file => file.isLeaf).map(file =>
-    <div className="filegrid-file-item" key={file.id}>
+    <div className="filegrid-file-item" key={file.id} {...itemPointerProps(file)}>
       <input
         type="checkbox"
         checked={selectedIds.includes(file.id)}
@@ -328,6 +343,7 @@ export default function FileListViewer({ listStyle, files, onSelect, counter, se
                   key={row.id}
                   className="filelist-item p-2"
                   onClick={() => onClickItem(row.original)}
+                  {...itemPointerProps(row.original)}
                 >
                   <Stack direction="horizontal">
                     {row.getVisibleCells().map(cell => (

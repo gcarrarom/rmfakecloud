@@ -1,3 +1,9 @@
+# 0.0.59
+
+## Features
+
+- Add context menus, long-press actions, and drag-and-drop document organization.
+
 # 0.0.58
 
 ## Features

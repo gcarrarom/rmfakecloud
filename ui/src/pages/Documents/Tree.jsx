@@ -3,7 +3,7 @@ import FileIcon from './FileIcon';
 
 import styles from "./Documents.module.scss"
 
-const DocumentTree = ({ selection, onSelect, treeRef, term, entries, height = 700 }) => {
+const DocumentTree = ({ selection, onSelect, treeRef, term, entries, height = 700, onMove }) => {
   const onTreeSelect = (sel) => {
     if (sel.length > 0) {
       const node = sel[0];
@@ -23,6 +23,7 @@ const DocumentTree = ({ selection, onSelect, treeRef, term, entries, height = 70
         style={style}
         ref={dragHandle}
         className={ node.isSelected ? styles.selected : ""}
+        onContextMenu={(event) => { event.preventDefault(); onSelect(node); }}
       >
         <div className={itemClassName(node.data)}>
           <FileIcon file={node.data} />
@@ -72,8 +73,9 @@ const DocumentTree = ({ selection, onSelect, treeRef, term, entries, height = 70
         onSelect={onTreeSelect}
         className="documents-tree"
         disableEdit={true}
-        disableDrag={true}
-        disableDrop={true}
+        onMove={onMove}
+        disableDrag={false}
+        disableDrop={false}
         openByDefault={false}
       >
         {Node}

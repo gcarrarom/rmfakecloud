@@ -219,6 +219,30 @@ export default function DocumentList() {
   };
   collectFolders(entries);
 
+  const findEntry = (items, id) => {
+    for (const item of items) {
+      if (item.id === id) return item;
+      const found = findEntry(item.children || [], id);
+      if (found) return found;
+    }
+    return null;
+  };
+
+  const moveItems = async ({ dragIds, parentId }) => {
+    const destination = parentId || "root";
+    if (destination === "trash") return;
+    try {
+      for (const id of dragIds) {
+        const item = findEntry(entries, id);
+        if (item) await apiservice.updateDocument(id, item.name, destination);
+      }
+      toast.success("Moved item");
+      onUpdate();
+    } catch (error) {
+      toast.error(`Failed to move: ${error.message}`);
+    }
+  };
+
 	useEffect(() => {
 		const loadDocs = async () => {
 			const { Trash, Entries } = await apiservice.listDocument()
@@ -353,7 +377,7 @@ export default function DocumentList() {
             </div>}
 
              <div ref={treeContainerRef} className={styles.treeContainer}>
-                <DocumentTree selection={selected} onSelect={onSelect} treeRef={treeRef} term={term} entries={entries} height={Math.max(treeHeight, 320)} />
+                 <DocumentTree selection={selected} onSelect={onSelect} treeRef={treeRef} term={term} entries={entries} height={Math.max(treeHeight, 320)} onMove={moveItems} />
               </div>
               <div
                 className={styles.sidebarResizeHandle}
@@ -405,7 +429,7 @@ export default function DocumentList() {
             </div>}
 
             <div className={styles.treeContainer}>
-               <DocumentTree selection={selected} onSelect={onSelect} treeRef={treeRef} term={term} entries={entries} height={drawerTreeHeight} />
+               <DocumentTree selection={selected} onSelect={onSelect} treeRef={treeRef} term={term} entries={entries} height={drawerTreeHeight} onMove={moveItems} />
             </div>
           </Offcanvas.Body>
          </Offcanvas>
