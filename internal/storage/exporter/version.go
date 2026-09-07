@@ -9,7 +9,7 @@ import (
 const (
 	// PDFGenerationVersion identifies the PDF layout and rendering pipeline.
 	// Bump this whenever generated PDFs need to be regenerated.
-	PDFGenerationVersion = "v3"
+	PDFGenerationVersion = "v4"
 
 	// HeaderV3 is the header for version 3 .rm files
 	HeaderV3 = "reMarkable .lines file, version=3"

@@ -1,3 +1,9 @@
+# 0.0.61
+
+## Bug fixes
+
+- Invalidate cached PDF previews after changing the annotation overlay renderer.
+
 # 0.0.60
 
 ## Bug fixes
