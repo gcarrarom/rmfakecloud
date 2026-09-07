@@ -1,3 +1,9 @@
+# 0.0.60
+
+## Bug fixes
+
+- Overlay document annotations on the original PDF instead of showing them as separate pages.
+
 # 0.0.59
 
 ## Features

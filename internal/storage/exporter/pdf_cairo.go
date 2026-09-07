@@ -12,6 +12,7 @@ import (
 	"github.com/ddvk/rmfakecloud/internal/encoding/rm"
 	"github.com/pdfcpu/pdfcpu/pkg/api"
 	"github.com/pdfcpu/pdfcpu/pkg/pdfcpu/model"
+	"github.com/pdfcpu/pdfcpu/pkg/pdfcpu/types"
 	"github.com/sirupsen/logrus"
 	"github.com/ungerik/go-cairo"
 )
@@ -178,16 +179,22 @@ func (p *PdfGenerator) generateWithBackground(zip *MyArchive, output io.Writer) 
 	tmpAnnotations.Close()
 	defer os.Remove(tmpAnnotationsPath)
 
-	// Generate annotations PDF to temp file
+	// Generate one transparent annotation page for every source page so the
+	// overlay remains aligned even when some pages have no strokes.
+	allPages := p.options.AllPages
+	p.options.AllPages = true
 	annotationsFile, err := os.Create(tmpAnnotationsPath)
 	if err != nil {
+		p.options.AllPages = allPages
 		return fmt.Errorf("failed to create annotations file: %w", err)
 	}
 	if err := p.generateAnnotationsOnly(zip, annotationsFile); err != nil {
 		annotationsFile.Close()
+		p.options.AllPages = allPages
 		return err
 	}
 	annotationsFile.Close()
+	p.options.AllPages = allPages
 
 	// Step 2: Write background PDF to temp file
 	tmpBackground, err := os.CreateTemp("", "rmfakecloud-background-*.pdf")
@@ -231,11 +238,15 @@ func (p *PdfGenerator) generateWithBackground(zip *MyArchive, output io.Writer) 
 	}
 	defer annFile.Close()
 
-	// Merge: background first, then overlay annotations
+	// Stamp the annotation PDF on top of the original pages. MergeRaw would
+	// concatenate the files and produce annotation-only pages instead.
 	conf := model.NewDefaultConfiguration()
-	rsc := []io.ReadSeeker{bgFile, annFile}
-	if err := api.MergeRaw(rsc, outFile, false, conf); err != nil {
-		return fmt.Errorf("failed to merge PDFs: %w", err)
+	wm, err := api.PDFMultiWatermarkForReadSeeker(annFile, 1, 1, "scale:1", true, false, types.POINTS)
+	if err != nil {
+		return fmt.Errorf("failed to create annotation overlay: %w", err)
+	}
+	if err := api.AddWatermarks(bgFile, outFile, nil, wm, conf); err != nil {
+		return fmt.Errorf("failed to overlay annotations: %w", err)
 	}
 	outFile.Close()
 
