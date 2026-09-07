@@ -27,7 +27,7 @@ func OverlayPDF(background, annotations io.ReadSeeker, output io.Writer) error {
 	// though it is valid PDF metadata. Normalize that optional name so the
 	// source document can still be stamped without changing its page content.
 	backgroundBytes = normalizePDFForPDFCPU(backgroundBytes)
-	wm, err := api.PDFMultiWatermarkForReadSeeker(annotations, 1, 1, "scale:1", true, false, types.POINTS)
+	wm, err := api.PDFMultiWatermarkForReadSeeker(annotations, 1, 1, "scale:1, rot:0", true, false, types.POINTS)
 	if err != nil {
 		return fmt.Errorf("failed to create annotation overlay: %w", err)
 	}

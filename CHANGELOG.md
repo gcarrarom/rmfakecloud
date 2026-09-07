@@ -1,3 +1,9 @@
+# 0.0.65
+
+## Bug fixes
+
+- Keep annotation overlays at zero rotation when stamping PDF backgrounds.
+
 # 0.0.64
 
 ## Bug fixes
