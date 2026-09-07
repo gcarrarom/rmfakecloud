@@ -15,6 +15,9 @@ func OverlayPDF(background, annotations io.ReadSeeker, output io.Writer) error {
 	if background == nil || annotations == nil || output == nil {
 		return fmt.Errorf("missing PDF overlay stream")
 	}
+	// The service container may not have a writable home directory. pdfcpu's
+	// default config loader exits the process when it cannot create one.
+	api.DisableConfigDir()
 	wm, err := api.PDFMultiWatermarkForReadSeeker(annotations, 1, 1, "scale:1", true, false, types.POINTS)
 	if err != nil {
 		return fmt.Errorf("failed to create annotation overlay: %w", err)

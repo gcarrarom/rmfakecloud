@@ -1,3 +1,9 @@
+# 0.0.63
+
+## Bug fixes
+
+- Prevent PDF export crashes when the container has no writable pdfcpu config directory.
+
 # 0.0.62
 
 ## Bug fixes
