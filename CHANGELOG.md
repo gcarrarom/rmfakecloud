@@ -1,3 +1,9 @@
+# 0.0.64
+
+## Bug fixes
+
+- Support PDF exports with C2PA associated-file metadata.
+
 # 0.0.63
 
 ## Bug fixes
