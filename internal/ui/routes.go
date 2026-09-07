@@ -59,6 +59,7 @@ func (app *ReactAppWrapper) RegisterRoutes(router *gin.Engine) {
 	})
 
 	auth.GET("newcode", app.newCode)
+	auth.GET("storage-usage", app.storageUsage)
 
 	// passcode (PIN) reset approval
 	auth.GET("passcode/resets", app.listPasscodeResets)

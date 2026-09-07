@@ -1,10 +1,40 @@
 import Container from "react-bootstrap/Container";
+import { useEffect, useState } from "react";
+
+function formatBytes(bytes) {
+  if (bytes < 1024) return `${bytes} B`;
+  const units = ["KiB", "MiB", "GiB", "TiB"];
+  let value = bytes;
+  let unit = "B";
+  for (const nextUnit of units) {
+    value /= 1024;
+    unit = nextUnit;
+    if (value < 1024 || nextUnit === units[units.length - 1]) break;
+  }
+  return `${value.toFixed(value >= 10 ? 1 : 2)} ${unit}`;
+}
 
 const Home = () => {
+  const [storageUsage, setStorageUsage] = useState(null);
+
+  useEffect(() => {
+    fetch("/ui/api/storage-usage")
+      .then((response) => {
+        if (!response.ok) throw new Error(response.statusText);
+        return response.json();
+      })
+      .then((data) => setStorageUsage(data.usedBytes))
+      .catch(() => setStorageUsage(null));
+  }, []);
+
   return (
     <Container fluid>
       <main>
         <h1>Welcome to your own reMarkable Cloud!</h1>
+        <h2>Cloud storage</h2>
+        <p>
+          {storageUsage === null ? "Storage usage unavailable" : `${formatBytes(storageUsage)} used`}
+        </p>
         <h2>About</h2>
         <p>
           This software is an unofficial replacement for the proprietary

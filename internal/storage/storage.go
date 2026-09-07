@@ -49,6 +49,7 @@ type MetadataStorer interface {
 type UserStorer interface {
 	GetUsers() ([]*model.User, error)
 	GetUser(string) (*model.User, error)
+	GetStorageUsage(string) (int64, error)
 	RegisterUser(u *model.User) error
 	UpdateUser(u *model.User) error
 	RemoveUser(uid string) error

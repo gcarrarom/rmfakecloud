@@ -366,6 +366,17 @@ func (app *ReactAppWrapper) updateDocument(c *gin.Context) {
 
 	c.Status(http.StatusOK)
 }
+
+func (app *ReactAppWrapper) storageUsage(c *gin.Context) {
+	usage, err := app.userStorer.GetStorageUsage(userID(c))
+	if err != nil {
+		log.Error(err)
+		c.AbortWithStatus(http.StatusInternalServerError)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"usedBytes": usage})
+}
+
 func (app *ReactAppWrapper) deleteDocument(c *gin.Context) {
 	uid := userID(c)
 	docid := c.Param("docid")

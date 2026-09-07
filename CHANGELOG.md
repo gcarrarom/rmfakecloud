@@ -1,3 +1,9 @@
+# 0.0.56
+
+## Features
+
+- Show per-user cloud storage usage on the homepage.
+
 # 0.0.55
 
 ## Bug fixes

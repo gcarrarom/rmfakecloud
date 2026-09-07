@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	"github.com/ddvk/rmfakecloud/internal/config"
 	"github.com/ddvk/rmfakecloud/internal/model"
@@ -62,6 +63,26 @@ func (fs *FileSystemStorage) GetUser(uid string) (user *model.User, err error) {
 	}
 
 	return
+}
+
+// GetStorageUsage returns the logical size of all files stored for a user.
+func (fs *FileSystemStorage) GetStorageUsage(uid string) (int64, error) {
+	userPath := fs.getUserPath(uid)
+	var usage int64
+	err := filepath.WalkDir(userPath, func(path string, entry os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if entry.Type().IsRegular() {
+			info, statErr := entry.Info()
+			if statErr != nil {
+				return statErr
+			}
+			usage += info.Size()
+		}
+		return nil
+	})
+	return usage, err
 }
 
 // GetUsers gets all users
