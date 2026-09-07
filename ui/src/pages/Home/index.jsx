@@ -1,4 +1,5 @@
 import Container from "react-bootstrap/Container";
+import Card from "react-bootstrap/Card";
 import { useEffect, useState } from "react";
 
 function formatBytes(bytes) {
@@ -31,10 +32,14 @@ const Home = () => {
     <Container fluid>
       <main>
         <h1>Welcome to your own reMarkable Cloud!</h1>
-        <h2>Cloud storage</h2>
-        <p>
-          {storageUsage === null ? "Storage usage unavailable" : `${formatBytes(storageUsage)} used`}
-        </p>
+        <Card className="mb-4" style={{ maxWidth: "32rem" }}>
+          <Card.Body>
+            <Card.Title>Cloud storage used</Card.Title>
+            <Card.Text className="mb-0">
+              {storageUsage === null ? "Storage usage unavailable" : formatBytes(storageUsage)}
+            </Card.Text>
+          </Card.Body>
+        </Card>
         <h2>About</h2>
         <p>
           This software is an unofficial replacement for the proprietary

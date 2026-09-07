@@ -1,3 +1,9 @@
+# 0.0.57
+
+## Bug fixes
+
+- Make cloud storage usage prominent and responsive on the homepage, including mobile layouts.
+
 # 0.0.56
 
 ## Features
