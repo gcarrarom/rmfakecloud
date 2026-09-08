@@ -23,11 +23,9 @@ function safeMarkdown(source) {
 }
 
 function drawPage(canvas, doc) {
-  const scale = canvas.clientWidth / PAGE_WIDTH;
-  canvas.width = PAGE_WIDTH * scale;
-  canvas.height = PAGE_HEIGHT * scale;
+  canvas.width = PAGE_WIDTH;
+  canvas.height = PAGE_HEIGHT;
   const ctx = canvas.getContext("2d");
-  ctx.scale(scale, scale);
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
   for (const layer of doc?.layers || []) {

@@ -1,3 +1,9 @@
+# 0.0.68
+
+## Bug fixes
+
+- Keep Markdown annotation overlays aligned vertically by matching the reMarkable page aspect ratio and native canvas coordinates.
+
 # 0.0.67
 
 ## Bug fixes

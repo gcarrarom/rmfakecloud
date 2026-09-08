@@ -256,9 +256,10 @@
 .markdownPage {
     position: relative;
     width: min(100%, 42rem);
-    min-height: 53rem;
+    aspect-ratio: 1404 / 1872;
     margin: 0 auto 1rem;
     padding: 3rem;
+    box-sizing: border-box;
     background: white;
     color: #202020;
     box-shadow: 0 1px 5px rgba(0, 0, 0, .2);
@@ -285,7 +286,6 @@
     }
 
     .markdownPage {
-        min-height: 40rem;
         padding: 1.5rem;
     }
 }
