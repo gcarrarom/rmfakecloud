@@ -28,10 +28,9 @@ func OverlayPDF(background, annotations io.ReadSeeker, output io.Writer) error {
 	// source document can still be stamped without changing its page content.
 	backgroundBytes = normalizePDFForPDFCPU(backgroundBytes)
 	conf := model.NewDefaultConfiguration()
-	// Both PDFs use the reMarkable page origin at the lower-left. Anchor the
-	// annotation page there instead of centering it, which can shift strokes
-	// vertically when the two page boxes have slightly different dimensions.
-	wm, err := api.PDFMultiWatermarkForReadSeeker(annotations, 1, 1, "pos:bl, scale:1, rot:0", true, false, types.POINTS)
+	// Keep the annotation page centered horizontally while anchoring its bottom
+	// edge to the background page to preserve the native vertical baseline.
+	wm, err := api.PDFMultiWatermarkForReadSeeker(annotations, 1, 1, "pos:bc, scale:1, rot:0", true, false, types.POINTS)
 	if err != nil {
 		return fmt.Errorf("failed to create annotation overlay: %w", err)
 	}

@@ -1,3 +1,9 @@
+# 0.0.70
+
+## Bug fixes
+
+- Center PDF annotation overlays horizontally while preserving their vertical baseline.
+
 # 0.0.69
 
 ## Bug fixes
