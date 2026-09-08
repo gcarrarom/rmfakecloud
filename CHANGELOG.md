@@ -1,3 +1,9 @@
+# 0.0.73
+
+## Bug fixes
+
+- Prevent PDF export crashes during annotation overlay transformation.
+
 # 0.0.72
 
 ## Bug fixes
