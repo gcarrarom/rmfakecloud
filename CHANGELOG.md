@@ -1,3 +1,9 @@
+# 0.0.78
+
+## Bug fixes
+
+- Fine-tune the final horizontal PDF annotation offset.
+
 # 0.0.77
 
 ## Bug fixes

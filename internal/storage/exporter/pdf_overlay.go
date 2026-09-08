@@ -56,7 +56,7 @@ type artworkPlacement struct {
 }
 
 const (
-	annotationOffsetX = 15
+	annotationOffsetX = 10
 	annotationOffsetY = 28
 )
 
