@@ -1,3 +1,9 @@
+# 0.0.69
+
+## Bug fixes
+
+- Anchor PDF annotation overlays to the page origin to prevent vertical drift.
+
 # 0.0.68
 
 ## Bug fixes
