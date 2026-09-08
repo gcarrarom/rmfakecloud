@@ -93,8 +93,7 @@ func (p *PdfGenerator) generateAnnotationsOnly(zip *MyArchive, output io.Writer)
 	if p.template {
 		firstWidth, firstHeight = rmPageSize.Width, rmPageSize.Height
 	} else {
-		// TODO: Get dimensions from background PDF
-		firstWidth, firstHeight = rmPageSize.Width, rmPageSize.Height
+		firstWidth, firstHeight = p.annotationPageSize()
 	}
 
 	// Create PDF surface
@@ -119,27 +118,21 @@ func (p *PdfGenerator) generateAnnotationsOnly(zip *MyArchive, output io.Writer)
 			if p.template {
 				pageWidth, pageHeight = rmPageSize.Width, rmPageSize.Height
 			} else {
-				// TODO: Get dimensions from background PDF page
-				pageWidth, pageHeight = rmPageSize.Width, rmPageSize.Height
+				pageWidth, pageHeight = p.annotationPageSize()
 			}
 			setPDFPageSize(pdfSurface, pageWidth, pageHeight)
 		}
 
-		// Calculate scale
+		// Calculate independent scales because a PDF template may stretch the
+		// reMarkable canvas differently in each direction.
 		pageWidth := firstWidth
 		pageHeight := firstHeight
-		ratio := pageHeight / pageWidth
-
-		var scale float64
-		if ratio < 1.33 {
-			scale = pageWidth / DeviceWidth
-		} else {
-			scale = pageHeight / DeviceHeight
-		}
+		scaleX := pageWidth / DeviceWidth
+		scaleY := pageHeight / DeviceHeight
 
 		// Draw annotations if present
 		if hasContent {
-			if err := p.drawAnnotations(pdfSurface, pageAnnotations.Data, scale, pageHeight); err != nil {
+			if err := p.drawAnnotations(pdfSurface, pageAnnotations.Data, scaleX, scaleY, pageHeight); err != nil {
 				return err
 			}
 		}
@@ -166,6 +159,14 @@ func (p *PdfGenerator) generateAnnotationsOnly(zip *MyArchive, output io.Writer)
 
 	_, err = io.Copy(output, tmpFileRead)
 	return err
+}
+
+func (p *PdfGenerator) annotationPageSize() (float64, float64) {
+	placement, err := inspectArtworkPlacement(normalizePDFForPDFCPU(p.backgroundPDF), model.NewDefaultConfiguration())
+	if err == nil && placement.Width > 0 && placement.Height > 0 {
+		return placement.Width, placement.Height
+	}
+	return rmPageSize.Width, rmPageSize.Height
 }
 
 func (p *PdfGenerator) generateWithBackground(zip *MyArchive, output io.Writer) error {
@@ -255,7 +256,7 @@ func (p *PdfGenerator) generateWithBackground(zip *MyArchive, output io.Writer) 
 	return err
 }
 
-func (p *PdfGenerator) drawAnnotations(surface *cairo.Surface, rmData *rm.Rm, scale, pageHeight float64) error {
+func (p *PdfGenerator) drawAnnotations(surface *cairo.Surface, rmData *rm.Rm, scaleX, scaleY, pageHeight float64) error {
 	surface.Save()
 	defer surface.Restore()
 
@@ -270,10 +271,10 @@ func (p *PdfGenerator) drawAnnotations(surface *cairo.Surface, rmData *rm.Rm, sc
 
 			if line.BrushType == rm.HighlighterV5 {
 				// Draw highlighter as semi-transparent rectangle
-				p.drawHighlighter(surface, line, scale, pageHeight)
+				p.drawHighlighter(surface, line, scaleX, scaleY, pageHeight)
 			} else {
 				// Draw regular stroke
-				p.drawStroke(surface, line, scale, pageHeight)
+				p.drawStroke(surface, line, scaleX, scaleY, pageHeight)
 			}
 		}
 	}
@@ -281,17 +282,18 @@ func (p *PdfGenerator) drawAnnotations(surface *cairo.Surface, rmData *rm.Rm, sc
 	return nil
 }
 
-func (p *PdfGenerator) drawHighlighter(surface *cairo.Surface, line rm.Line, scale, pageHeight float64) {
+func (p *PdfGenerator) drawHighlighter(surface *cairo.Surface, line rm.Line, scaleX, scaleY, pageHeight float64) {
 	if len(line.Points) < 2 {
 		return
 	}
 
 	last := len(line.Points) - 1
-	x1, y1 := normalized(line.Points[0], scale)
-	x2, _ := normalized(line.Points[last], scale)
+	x1, y1 := normalized(line.Points[0], scaleX)
+	x2, _ := normalized(line.Points[last], scaleX)
+	y1 = float64(line.Points[0].Y) * scaleY
 
 	// Highlighter width
-	width := scale * 30
+	width := scaleX * 30
 	y1 += width / 2
 
 	// Convert Y coordinate (Cairo origin is top-left, PDF is bottom-left)
@@ -307,7 +309,7 @@ func (p *PdfGenerator) drawHighlighter(surface *cairo.Surface, line rm.Line, sca
 	surface.Stroke()
 }
 
-func (p *PdfGenerator) drawStroke(surface *cairo.Surface, line rm.Line, scale, pageHeight float64) {
+func (p *PdfGenerator) drawStroke(surface *cairo.Surface, line rm.Line, scaleX, scaleY, pageHeight float64) {
 	if len(line.Points) < 1 {
 		return
 	}
@@ -335,17 +337,19 @@ func (p *PdfGenerator) drawStroke(surface *cairo.Surface, line rm.Line, scale, p
 		cur := line.Points[i]
 
 		// Interpolate width between points, convert from device pixels to PDF points
-		w1 := pointStrokeWidth(prev.Width, line.BrushSize, scale)
-		w2 := pointStrokeWidth(cur.Width, line.BrushSize, scale)
+		w1 := pointStrokeWidth(prev.Width, line.BrushSize, scaleX)
+		w2 := pointStrokeWidth(cur.Width, line.BrushSize, scaleX)
 		segWidth := (w1 + w2) / 2.0
 		if segWidth < 0.5 {
 			segWidth = 0.5
 		}
 		surface.SetLineWidth(segWidth)
 
-		x1, y1 := normalized(prev, scale)
+		x1 := float64(prev.X) * scaleX
+		y1 := float64(prev.Y) * scaleY
 		y1 = pageHeight - y1
-		x2, y2 := normalized(cur, scale)
+		x2 := float64(cur.X) * scaleX
+		y2 := float64(cur.Y) * scaleY
 		y2 = pageHeight - y2
 
 		surface.MoveTo(x1, y1)

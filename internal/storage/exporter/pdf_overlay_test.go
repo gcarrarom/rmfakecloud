@@ -19,10 +19,10 @@ func TestOverlayPDFNormalizesC2PAAssociatedFileRelationship(t *testing.T) {
 }
 
 func TestOverlayPDFUsesZeroRotation(t *testing.T) {
-	wm, err := api.PDFMultiWatermarkForReadSeeker(bytes.NewReader(nil), 1, 1, "pos:bc, scale:1, rot:0", true, false, types.POINTS)
+	wm, err := api.PDFMultiWatermarkForReadSeeker(bytes.NewReader(nil), 1, 1, "pos:bl, scale:1 abs, rot:0", true, false, types.POINTS)
 
 	require.NoError(t, err)
 	require.Equal(t, float64(0), wm.Rotation)
 	require.Equal(t, model.NoDiagonal, wm.Diagonal)
-	require.Equal(t, types.BottomCenter, wm.Pos)
+	require.Equal(t, types.BottomLeft, wm.Pos)
 }

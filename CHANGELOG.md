@@ -1,3 +1,9 @@
+# 0.0.74
+
+## Bug fixes
+
+- Map PDF annotation coordinates to stretched artwork rectangles without vertical drift.
+
 # 0.0.73
 
 ## Bug fixes

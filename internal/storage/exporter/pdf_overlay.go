@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"regexp"
+	"strconv"
 
 	"github.com/pdfcpu/pdfcpu/pkg/api"
 	"github.com/pdfcpu/pdfcpu/pkg/pdfcpu/model"
@@ -28,14 +30,54 @@ func OverlayPDF(background, annotations io.ReadSeeker, output io.Writer) error {
 	// source document can still be stamped without changing its page content.
 	backgroundBytes = normalizePDFForPDFCPU(backgroundBytes)
 	conf := model.NewDefaultConfiguration()
-	wm, err := api.PDFMultiWatermarkForReadSeeker(annotations, 1, 1, "pos:bc, scale:1, rot:0", true, false, types.POINTS)
+	placement, err := inspectArtworkPlacement(backgroundBytes, conf)
+	if err != nil {
+		return fmt.Errorf("failed to inspect PDF artwork placement: %w", err)
+	}
+	wm, err := api.PDFMultiWatermarkForReadSeeker(annotations, 1, 1, "pos:bl, scale:1 abs, rot:0", true, false, types.POINTS)
 	if err != nil {
 		return fmt.Errorf("failed to create annotation overlay: %w", err)
 	}
+	wm.Dx = placement.X
+	wm.Dy = placement.Y
 	if err := api.AddWatermarks(bytes.NewReader(backgroundBytes), output, nil, wm, conf); err != nil {
 		return fmt.Errorf("failed to overlay annotations: %w", err)
 	}
 	return nil
+}
+
+type artworkPlacement struct {
+	X, Y          float64
+	Width, Height float64
+}
+
+var pdfImageTransform = regexp.MustCompile(`(?m)([-+]?\d*\.?\d+)\s+[-+]?\d*\.?\d+\s+[-+]?\d*\.?\d+\s+([-+]?\d*\.?\d+)\s+([-+]?\d*\.?\d+)\s+([-+]?\d*\.?\d+)\s+cm\s*/[^\s]+\s+Do`)
+
+func inspectArtworkPlacement(background []byte, conf *model.Configuration) (artworkPlacement, error) {
+	ctx, err := api.ReadContext(bytes.NewReader(background), conf)
+	if err != nil {
+		return artworkPlacement{}, err
+	}
+	page, _, _, err := ctx.XRefTable.PageDict(1, false)
+	if err != nil {
+		return artworkPlacement{}, err
+	}
+	content, err := ctx.XRefTable.PageContent(page, 1)
+	if err != nil {
+		return artworkPlacement{}, err
+	}
+	match := pdfImageTransform.FindSubmatch(content)
+	if len(match) != 5 {
+		return artworkPlacement{}, fmt.Errorf("background PDF has no image placement transform")
+	}
+	values := make([]float64, 4)
+	for i := range values {
+		values[i], err = strconv.ParseFloat(string(match[i+1]), 64)
+		if err != nil {
+			return artworkPlacement{}, err
+		}
+	}
+	return artworkPlacement{Width: values[0], Height: values[1], X: values[2], Y: values[3]}, nil
 }
 
 func normalizePDFForPDFCPU(pdf []byte) []byte {
