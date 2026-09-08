@@ -1,3 +1,9 @@
+# 0.0.66
+
+## Bug fixes
+
+- Align annotation overlays to the background PDF page width.
+
 # 0.0.65
 
 ## Bug fixes

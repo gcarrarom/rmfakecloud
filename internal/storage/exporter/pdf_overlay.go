@@ -27,11 +27,24 @@ func OverlayPDF(background, annotations io.ReadSeeker, output io.Writer) error {
 	// though it is valid PDF metadata. Normalize that optional name so the
 	// source document can still be stamped without changing its page content.
 	backgroundBytes = normalizePDFForPDFCPU(backgroundBytes)
-	wm, err := api.PDFMultiWatermarkForReadSeeker(annotations, 1, 1, "scale:1, rot:0", true, false, types.POINTS)
+	conf := model.NewDefaultConfiguration()
+	pageDims, err := api.PageDims(bytes.NewReader(backgroundBytes), conf)
+	if err != nil {
+		return fmt.Errorf("failed to read PDF page dimensions: %w", err)
+	}
+	if len(pageDims) == 0 || pageDims[0].Width <= 0 {
+		return fmt.Errorf("PDF background has no usable page dimensions")
+	}
+	wm, err := api.PDFMultiWatermarkForReadSeeker(annotations, 1, 1, "scale:1 abs, rot:0", true, false, types.POINTS)
 	if err != nil {
 		return fmt.Errorf("failed to create annotation overlay: %w", err)
 	}
-	if err := api.AddWatermarks(bytes.NewReader(backgroundBytes), output, nil, wm, model.NewDefaultConfiguration()); err != nil {
+	// rmc-go exports in reMarkable screen points. Scale by the destination
+	// width so documents such as Letter pages do not fit by height and drift
+	// toward the bottom-right edge.
+	wm.Scale = pageDims[0].Width / (1404.0 * 72.0 / 226.0)
+	wm.ScaleAbs = true
+	if err := api.AddWatermarks(bytes.NewReader(backgroundBytes), output, nil, wm, conf); err != nil {
 		return fmt.Errorf("failed to overlay annotations: %w", err)
 	}
 	return nil
