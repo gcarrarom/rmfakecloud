@@ -1,3 +1,9 @@
+# 0.0.77
+
+## Bug fixes
+
+- Fine-tune the horizontal PDF annotation alignment.
+
 # 0.0.76
 
 ## Bug fixes
