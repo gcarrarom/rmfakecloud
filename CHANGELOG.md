@@ -1,3 +1,9 @@
+# 0.0.71
+
+## Bug fixes
+
+- Map PDF annotations to the source artwork rectangle using independent horizontal and vertical scaling.
+
 # 0.0.70
 
 ## Bug fixes
