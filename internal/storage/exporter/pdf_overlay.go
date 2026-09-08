@@ -40,6 +40,10 @@ func OverlayPDF(background, annotations io.ReadSeeker, output io.Writer) error {
 	}
 	wm.Dx = placement.X
 	wm.Dy = placement.Y
+	// The reMarkable canvas origin used by the native renderer is offset from
+	// the PDF artwork origin by this small amount after pdfcpu places the stamp.
+	wm.Dx += annotationOffsetX
+	wm.Dy += annotationOffsetY
 	if err := api.AddWatermarks(bytes.NewReader(backgroundBytes), output, nil, wm, conf); err != nil {
 		return fmt.Errorf("failed to overlay annotations: %w", err)
 	}
@@ -50,6 +54,11 @@ type artworkPlacement struct {
 	X, Y          float64
 	Width, Height float64
 }
+
+const (
+	annotationOffsetX = 30
+	annotationOffsetY = 28
+)
 
 var pdfImageTransform = regexp.MustCompile(`(?m)([-+]?\d*\.?\d+)\s+[-+]?\d*\.?\d+\s+[-+]?\d*\.?\d+\s+([-+]?\d*\.?\d+)\s+([-+]?\d*\.?\d+)\s+([-+]?\d*\.?\d+)\s+cm\s*/[^\s]+\s+Do`)
 

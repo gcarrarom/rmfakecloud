@@ -1,3 +1,9 @@
+# 0.0.76
+
+## Bug fixes
+
+- Correct the remaining PDF annotation translation offset.
+
 # 0.0.75
 
 ## Bug fixes
