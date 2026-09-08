@@ -1,3 +1,9 @@
+# 0.0.72
+
+## Bug fixes
+
+- Preserve valid PDF page metadata when transforming annotation overlays.
+
 # 0.0.71
 
 ## Bug fixes

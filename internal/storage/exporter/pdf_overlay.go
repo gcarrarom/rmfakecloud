@@ -62,7 +62,7 @@ func transformAnnotationPDF(annotation, background []byte, conf *model.Configura
 	if len(annotationDims) == 0 || annotationDims[0].Width <= 0 || annotationDims[0].Height <= 0 || len(backgroundDims) == 0 {
 		return nil, fmt.Errorf("PDF overlay has no usable page dimensions")
 	}
-	backgroundCtx, err := api.ReadContext(bytes.NewReader(background), conf)
+	backgroundCtx, err := api.ReadAndValidate(bytes.NewReader(background), conf)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +86,7 @@ func transformAnnotationPDF(annotation, background []byte, conf *model.Configura
 		}
 	}
 
-	annotationCtx, err := api.ReadContext(bytes.NewReader(annotation), conf)
+	annotationCtx, err := api.ReadAndValidate(bytes.NewReader(annotation), conf)
 	if err != nil {
 		return nil, err
 	}
