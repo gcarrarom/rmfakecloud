@@ -1,3 +1,9 @@
+# 0.0.67
+
+## Bug fixes
+
+- Preserve proportional annotation scaling across PDF page sizes.
+
 # 0.0.66
 
 ## Bug fixes
