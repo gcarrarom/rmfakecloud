@@ -54,7 +54,7 @@ type artworkPlacement struct {
 var pdfImageTransform = regexp.MustCompile(`(?m)([-+]?\d*\.?\d+)\s+[-+]?\d*\.?\d+\s+[-+]?\d*\.?\d+\s+([-+]?\d*\.?\d+)\s+([-+]?\d*\.?\d+)\s+([-+]?\d*\.?\d+)\s+cm\s*/[^\s]+\s+Do`)
 
 func inspectArtworkPlacement(background []byte, conf *model.Configuration) (artworkPlacement, error) {
-	ctx, err := api.ReadContext(bytes.NewReader(background), conf)
+	ctx, err := api.ReadAndValidate(bytes.NewReader(background), conf)
 	if err != nil {
 		return artworkPlacement{}, err
 	}

@@ -1,3 +1,9 @@
+# 0.0.75
+
+## Bug fixes
+
+- Resolve PDF page trees before inspecting artwork placement.
+
 # 0.0.74
 
 ## Bug fixes
