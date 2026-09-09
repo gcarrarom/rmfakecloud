@@ -34,16 +34,20 @@ func OverlayPDF(background, annotations io.ReadSeeker, output io.Writer) error {
 	if err != nil {
 		return fmt.Errorf("failed to inspect PDF artwork placement: %w", err)
 	}
-	wm, err := api.PDFMultiWatermarkForReadSeeker(annotations, 1, 1, "pos:bl, scale:1 abs, rot:0", true, false, types.POINTS)
+	annotationBytes, err := io.ReadAll(annotations)
+	if err != nil {
+		return fmt.Errorf("failed to read annotation PDF: %w", err)
+	}
+	annotationBytes, err = transformAnnotationPDF(annotationBytes, placement, conf)
+	if err != nil {
+		return fmt.Errorf("failed to transform annotation PDF: %w", err)
+	}
+	wm, err := api.PDFMultiWatermarkForReadSeeker(bytes.NewReader(annotationBytes), 1, 1, "pos:bl, scale:1 abs, rot:0", true, false, types.POINTS)
 	if err != nil {
 		return fmt.Errorf("failed to create annotation overlay: %w", err)
 	}
 	wm.Dx = placement.X
 	wm.Dy = placement.Y
-	// The reMarkable canvas origin used by the native renderer is offset from
-	// the PDF artwork origin by this small amount after pdfcpu places the stamp.
-	wm.Dx += annotationOffsetX
-	wm.Dy += annotationOffsetY
 	if err := api.AddWatermarks(bytes.NewReader(backgroundBytes), output, nil, wm, conf); err != nil {
 		return fmt.Errorf("failed to overlay annotations: %w", err)
 	}
@@ -55,12 +59,55 @@ type artworkPlacement struct {
 	Width, Height float64
 }
 
-const (
-	annotationOffsetX = 20
-	annotationOffsetY = 28
-)
-
 var pdfImageTransform = regexp.MustCompile(`(?m)([-+]?\d*\.?\d+)\s+[-+]?\d*\.?\d+\s+[-+]?\d*\.?\d+\s+([-+]?\d*\.?\d+)\s+([-+]?\d*\.?\d+)\s+([-+]?\d*\.?\d+)\s+cm\s*/[^\s]+\s+Do`)
+
+func transformAnnotationPDF(annotation []byte, placement artworkPlacement, conf *model.Configuration) ([]byte, error) {
+	dims, err := api.PageDims(bytes.NewReader(annotation), conf)
+	if err != nil {
+		return nil, err
+	}
+	if len(dims) == 0 || dims[0].Width <= 0 || dims[0].Height <= 0 {
+		return nil, fmt.Errorf("annotation PDF has no usable page dimensions")
+	}
+	ctx, err := api.ReadAndValidate(bytes.NewReader(annotation), conf)
+	if err != nil {
+		return nil, err
+	}
+	page, _, _, err := ctx.XRefTable.PageDict(1, false)
+	if err != nil {
+		return nil, err
+	}
+	content, err := ctx.XRefTable.PageContent(page, 1)
+	if err != nil {
+		return nil, err
+	}
+	transformed := fmt.Sprintf("q %g 0 0 %g 0 0 cm\n%s\nQ\n",
+		placement.Width/dims[0].Width,
+		placement.Height/dims[0].Height,
+		content)
+	stream, err := ctx.XRefTable.NewStreamDictForBuf([]byte(transformed))
+	if err != nil {
+		return nil, err
+	}
+	if err := stream.Encode(); err != nil {
+		return nil, err
+	}
+	streamRef, err := ctx.XRefTable.IndRefForNewObject(*stream)
+	if err != nil {
+		return nil, err
+	}
+	page["Contents"] = *streamRef
+	page.Update("MediaBox", types.Array{
+		types.Integer(0), types.Integer(0),
+		types.Float(placement.Width), types.Float(placement.Height),
+	})
+
+	var output bytes.Buffer
+	if err := api.Write(ctx, &output, conf); err != nil {
+		return nil, err
+	}
+	return output.Bytes(), nil
+}
 
 func inspectArtworkPlacement(background []byte, conf *model.Configuration) (artworkPlacement, error) {
 	ctx, err := api.ReadAndValidate(bytes.NewReader(background), conf)

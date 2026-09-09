@@ -1,3 +1,9 @@
+# 0.0.81
+
+## Bug fixes
+
+- Map cropped v6 annotation PDFs to template artwork with an explicit affine transform.
+
 # 0.0.80
 
 ## Bug fixes
