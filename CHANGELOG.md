@@ -1,3 +1,9 @@
+# 0.0.80
+
+## Bug fixes
+
+- Apply the final small rightward PDF annotation adjustment.
+
 # 0.0.79
 
 ## Bug fixes
