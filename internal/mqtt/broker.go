@@ -220,9 +220,21 @@ func (b *Broker) Stop() error {
 
 func (b *Broker) PublishSignaling(userID, clientID string, payload []byte) {
 	if b.server == nil {
+		log.Warnf("MQTT: cannot publish screenshare signaling user_id=%s client_id=%s reason=server_unavailable", userID, clientID)
 		return
 	}
 	topic := fmt.Sprintf("user/%s/client/%s/signaling/screenshare", userID, clientID)
+	connected := false
+	for _, cl := range b.server.Clients.GetAll() {
+		if cl.ID == clientID || string(cl.Properties.Username) == userID && strings.HasPrefix(cl.ID, userID+"-") {
+			connected = true
+			break
+		}
+	}
+	log.Debugf("MQTT: publish screenshare signaling user_id=%s client_id=%s connected=%t topic=%s size=%d", userID, clientID, connected, topic, len(payload))
+	if !connected {
+		log.Warnf("MQTT: screenshare target is not connected user_id=%s client_id=%s", userID, clientID)
+	}
 	b.server.Publish(topic, payload, false, 1)
 }
 
@@ -514,7 +526,6 @@ func (h *AuthHook) handleBroadcast(senderClientID, userID string, msg *Signaling
 		}
 	}
 
-
 	if roomID != "" {
 		payloadBytes, _ := json.Marshal(msg.Payload)
 		h.roomManager.AddBroadcast(roomID, senderClientID, payloadBytes)
@@ -550,7 +561,6 @@ func (h *AuthHook) handleDirect(senderClientID, userID string, msg *SignalingMes
 		h.server.Publish(peerTopic, msgBytes, false, qos)
 	}
 
-
 	if roomID != "" && h.roomManager != nil {
 		payloadBytes, _ := json.Marshal(msg.Payload)
 		h.roomManager.AddDirect(roomID, senderClientID, targetClientID, payloadBytes)
@@ -579,7 +589,6 @@ func (h *AuthHook) OnPublish(cl *mqtt.Client, pk packets.Packet) (packets.Packet
 	if log.GetLevel() >= log.DebugLevel && payloadSize > 0 && payloadSize < 1000 {
 		log.Debugf("MQTT: Publish payload: %s", string(pk.Payload))
 	}
-
 
 	if roomID := h.roomManager.FindActiveRoom(userID); roomID != "" {
 		h.roomManager.Keepalive(roomID)
@@ -616,7 +625,7 @@ func (h *AuthHook) OnPublish(cl *mqtt.Client, pk packets.Packet) (packets.Packet
 				payloadBytes, _ := json.Marshal(msg.Payload)
 				if msg.Type == "direct" {
 					targetClientID := msg.ClientId
-	
+
 					parts := strings.Split(pk.TopicName, "/")
 					if len(parts) >= 4 {
 						targetClientID = parts[3]

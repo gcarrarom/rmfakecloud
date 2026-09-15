@@ -914,7 +914,9 @@ func (app *ReactAppWrapper) screenshareGetOffer(c *gin.Context) {
 	json.Unmarshal([]byte(`{"type":"request-offer","clientId":"`+clientID+`","sourceDeviceID":"`+clientID+`"}`), &inner)
 	app.h.NotifyScreenshare(uid, clientID, inner)
 
-	if app.mqtt != nil && app.mqtt.HasConnectedClient(uid) {
+	mqttConnected := app.mqtt != nil && app.mqtt.HasConnectedClient(uid)
+	log.Infof("Screenshare: request-offer room=%s browser=%s mqtt_connected=%t clients=%d", roomID, clientID, mqttConnected, len(app.roomManager.GetClients(roomID)))
+	if mqttConnected {
 		clients := app.roomManager.GetClients(roomID)
 		for _, cl := range clients {
 			if cl.IsOwner {
@@ -928,9 +930,13 @@ func (app *ReactAppWrapper) screenshareGetOffer(c *gin.Context) {
 			}
 		}
 	}
+	if !mqttConnected {
+		log.Warnf("Screenshare: request-offer cannot reach tablet room=%s reason=no_mqtt_client", roomID)
+	}
 
 	msgs := app.roomManager.WaitForMessages(roomID, 1, 30*time.Second)
 	if msgs == nil {
+		log.Warnf("Screenshare: offer timeout room=%s browser=%s", roomID, clientID)
 		c.JSON(http.StatusGatewayTimeout, gin.H{"error": "timeout waiting for offer"})
 		return
 	}

@@ -1,3 +1,9 @@
+# 0.0.82
+
+## Bug fixes
+
+- Expose MQTT signaling and add screen-share connection diagnostics.
+
 # 0.0.81
 
 ## Bug fixes

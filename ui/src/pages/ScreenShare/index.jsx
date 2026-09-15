@@ -357,11 +357,22 @@ export default function ScreenShare() {
 
       // Don't trickle ICE candidates. The tablet crashes on mDNS candidates.
       // The SDP answer already contains our ICE info for LAN connectivity.
-      pc.onicecandidate = () => {};
+      pc.onicecandidate = (event) => {
+        if (event.candidate) {
+          console.debug("[screenshare] local candidate:", event.candidate.protocol, event.candidate.type, event.candidate.address || "mDNS");
+        }
+      };
+
+      pc.onicegatheringstatechange = () =>
+        console.debug("[screenshare] ICE gathering:", pc.iceGatheringState);
+
+      pc.oniceconnectionstatechange = () =>
+        console.debug("[screenshare] ICE connection:", pc.iceConnectionState);
 
       pc.oniceconnectionstatechange = () =>
 
       pc.onconnectionstatechange = () => {
+        console.debug("[screenshare] peer connection:", pc.connectionState, "signaling:", pc.signalingState);
 
         if (
           pc.connectionState === "failed" ||
@@ -447,6 +458,7 @@ export default function ScreenShare() {
         }),
       });
     } catch (e) {
+      console.error("[screenshare] connection failed:", e);
       setErrorMsg(e.message);
       setStatus(STATUS.ERROR);
     }
