@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Container, Alert, Spinner, Button } from "react-bootstrap";
+import { Container, Alert, Spinner, Button, Badge } from "react-bootstrap";
 import { BsGearFill, BsFullscreenExit, BsArrowCounterclockwise, BsArrowClockwise } from "react-icons/bs";
 import pako from "pako";
 import constants from "../../common/constants";
@@ -56,6 +56,11 @@ function api(path, opts = {}) {
 
 export default function ScreenShare() {
   const [status, setStatus] = useState(STATUS.WAITING);
+  const [activeTab, setActiveTab] = useState("share");
+  const [diagnostics, setDiagnostics] = useState([]);
+  const [tabletConnected, setTabletConnected] = useState(false);
+  const [streamConnected, setStreamConnected] = useState(false);
+  const [retentionDays, setRetentionDays] = useState(7);
   const [errorMsg, setErrorMsg] = useState("");
   const [poppedOut, setPoppedOut] = useState(false);
   const [manualRotation, setManualRotation] = useState(0);
@@ -67,6 +72,23 @@ export default function ScreenShare() {
   const [isMobile, setIsMobile] = useState(() => window.matchMedia("(max-width: 767.98px)").matches);
   const controlsRef = useRef(null);
   const manualRotationRef = useRef(0);
+  const statusRef = useRef(status);
+  const tabletConnectedRef = useRef(tabletConnected);
+  const disconnectedRef = useRef(false);
+  const joinLockRef = useRef(false);
+  const retryTimerRef = useRef(null);
+  const connectionTimerRef = useRef(null);
+  const retryCountRef = useRef(0);
+  const tryJoinRef = useRef(null);
+  statusRef.current = status;
+
+  const recordDiagnostic = useCallback((event, message = "") => {
+    fetch(`${constants.ROOT_URL}/screenshare/diagnostics`, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({event, message}),
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(max-width: 767.98px)");
@@ -113,6 +135,8 @@ export default function ScreenShare() {
   const tabletClientIdRef = useRef(null);
 
   const cleanup = useCallback(() => {
+    if (connectionTimerRef.current) clearTimeout(connectionTimerRef.current);
+    connectionTimerRef.current = null;
     dcRef.current = null;
     if (pcRef.current) {
       pcRef.current.close();
@@ -188,6 +212,7 @@ export default function ScreenShare() {
         }
 
         dc.onopen = () => {
+          recordDiagnostic("datachannel_open", "WebRTC data channel opened");
           const header = new TextEncoder().encode("reMarkable");
           const buf = new ArrayBuffer(header.length + 2);
           new Uint8Array(buf).set(header);
@@ -197,7 +222,7 @@ export default function ScreenShare() {
               if (s.type === "candidate-pair" && s.state === "succeeded") {
                 const local = stats.get(s.localCandidateId);
                 const remote = stats.get(s.remoteCandidateId);
-                console.log("[screenshare] peer:", remote?.address, s.nominated ? "(active)" : "");
+                console.debug("[screenshare] selected candidate pair:", local?.candidateType, remote?.candidateType, s.nominated ? "(active)" : "");
               }
             });
           });
@@ -230,7 +255,10 @@ export default function ScreenShare() {
               canvas.height = screenHeight;
               ctx = canvas.getContext("2d", {willReadFrequently: true});
             }
+            if (connectionTimerRef.current) clearTimeout(connectionTimerRef.current);
+            connectionTimerRef.current = null;
             setStatus(STATUS.STREAMING);
+            recordDiagnostic("stream_started", `Screen dimensions ${screenWidth}x${screenHeight}`);
             return;
           }
 
@@ -349,8 +377,12 @@ export default function ScreenShare() {
         };
 
         dc.onclose = () => {
+          if (pcRef.current !== pc) return;
+          recordDiagnostic("peer_connection", "WebRTC data channel closed");
           if (!disconnectedRef.current) {
             setStatus(STATUS.WAITING);
+            if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+            retryTimerRef.current = setTimeout(() => tryJoinRef.current?.(), 1500);
           }
         };
       };
@@ -363,31 +395,45 @@ export default function ScreenShare() {
         }
       };
 
-      pc.onicegatheringstatechange = () =>
+      pc.onicegatheringstatechange = () => {
         console.debug("[screenshare] ICE gathering:", pc.iceGatheringState);
+        recordDiagnostic("ice_gathering", pc.iceGatheringState);
+      };
 
-      pc.oniceconnectionstatechange = () =>
+      pc.oniceconnectionstatechange = () => {
         console.debug("[screenshare] ICE connection:", pc.iceConnectionState);
-
-      pc.oniceconnectionstatechange = () =>
+        recordDiagnostic("ice_connection", pc.iceConnectionState);
+      };
 
       pc.onconnectionstatechange = () => {
         console.debug("[screenshare] peer connection:", pc.connectionState, "signaling:", pc.signalingState);
+        recordDiagnostic("peer_connection", `${pc.connectionState}; signaling=${pc.signalingState}`);
 
-        if (
-          pc.connectionState === "failed" ||
-          pc.connectionState === "disconnected"
-        ) {
+        if (pc.connectionState === "connected") {
+          if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+          retryTimerRef.current = null;
+        }
+        const recover = () => {
           cleanup();
           if (!disconnectedRef.current) {
             setStatus(STATUS.WAITING);
+            if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+            retryTimerRef.current = setTimeout(() => tryJoinRef.current?.(), 1500);
           }
+        };
+        if (pc.connectionState === "failed") {
+          recover();
+        } else if (pc.connectionState === "disconnected") {
+          if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+          retryTimerRef.current = setTimeout(() => {
+            if (pc.connectionState === "disconnected") recover();
+          }, 5000);
         }
       };
 
       return pc;
     },
-    [cleanup]
+    [cleanup, recordDiagnostic]
   );
 
   const joinRoom = useCallback(async () => {
@@ -395,7 +441,10 @@ export default function ScreenShare() {
       setStatus(STATUS.CONNECTING);
 
       const offerRes = await api("offer");
-      if (!offerRes.ok) throw new Error("Failed to get offer from device");
+      if (!offerRes.ok) {
+        const reason = await offerRes.json().catch(() => ({}));
+        throw new Error(reason.error || `Could not get tablet offer (HTTP ${offerRes.status})`);
+      }
 
       const data = await offerRes.json();
       roomIdRef.current = data.roomId;
@@ -447,7 +496,7 @@ export default function ScreenShare() {
         });
       }
 
-      await api(`room/${data.roomId}/answer`, {
+      const answerResponse = await api(`room/${data.roomId}/answer`, {
         method: "POST",
         body: JSON.stringify({
           targetClientId: offerMsg.clientId,
@@ -457,31 +506,96 @@ export default function ScreenShare() {
           },
         }),
       });
+      if (!answerResponse.ok) throw new Error(`Could not send WebRTC answer (HTTP ${answerResponse.status})`);
+      if (connectionTimerRef.current) clearTimeout(connectionTimerRef.current);
+      connectionTimerRef.current = setTimeout(() => {
+        if (statusRef.current !== STATUS.STREAMING) {
+          recordDiagnostic("connection_error", "WebRTC connection did not start streaming within 20 seconds");
+          cleanup();
+          setErrorMsg("The tablet offer was received, but the WebRTC stream did not start. Reconnecting automatically.");
+          setStatus(STATUS.ERROR);
+        }
+      }, 20000);
     } catch (e) {
       console.error("[screenshare] connection failed:", e);
+      cleanup();
       setErrorMsg(e.message);
       setStatus(STATUS.ERROR);
+      recordDiagnostic("connection_error", e.message || "Unknown screenshare connection error");
     }
-  }, [setupPeerConnection]);
+  }, [setupPeerConnection, recordDiagnostic, cleanup]);
+
+  const tryJoin = useCallback(async () => {
+    if (!tabletConnectedRef.current || disconnectedRef.current || joinLockRef.current || statusRef.current === STATUS.STREAMING) return;
+    joinLockRef.current = true;
+    try {
+      const room = await api("room");
+      if (room.ok) {
+        retryCountRef.current = 0;
+        await joinRoom();
+      }
+    } catch (e) {
+      recordDiagnostic("connection_error", e.message || "Could not check for an active tablet session");
+    } finally {
+      joinLockRef.current = false;
+    }
+  }, [joinRoom, recordDiagnostic]);
+  tryJoinRef.current = tryJoin;
 
   useEffect(() => {
-    if (status !== STATUS.WAITING) return;
-
-    const check = setInterval(async () => {
-      const r = await api("room").catch(() => null);
-      if (r?.ok) {
-        clearInterval(check);
-        joinRoom();
-      }
-    }, 2000);
-
-    return () => clearInterval(check);
-  }, [status, joinRoom]);
+    let eventSource;
+    let disposed = false;
+    const scheduleRetry = () => {
+      if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+      const delay = Math.min(1000 * (2 ** retryCountRef.current), 30000);
+      retryCountRef.current += 1;
+      retryTimerRef.current = setTimeout(() => tryJoinRef.current?.(), delay);
+    };
+    const connect = () => {
+      eventSource = new EventSource(`${constants.ROOT_URL}/screenshare/diagnostics/stream`);
+      eventSource.onopen = () => {
+        setStreamConnected(true);
+        recordDiagnostic("browser_connected", "Browser diagnostics stream connected");
+      };
+      eventSource.onerror = () => setStreamConnected(false);
+      eventSource.addEventListener("snapshot", (event) => {
+        const snapshot = JSON.parse(event.data);
+        if (disposed) return;
+        setTabletConnected(snapshot.tabletConnected);
+        tabletConnectedRef.current = snapshot.tabletConnected;
+        setRetentionDays(snapshot.retentionDays || 7);
+        setDiagnostics(snapshot.events || []);
+        tryJoinRef.current?.();
+      });
+      eventSource.addEventListener("diagnostic", (event) => {
+        const item = JSON.parse(event.data);
+        if (disposed) return;
+        setDiagnostics((previous) => [...previous, item].slice(-200));
+        if (item.event === "tablet_mqtt_connected") {
+          setTabletConnected(true);
+          tabletConnectedRef.current = true;
+        }
+        if (item.event === "tablet_mqtt_disconnected") {
+          setTabletConnected(false);
+          tabletConnectedRef.current = false;
+        }
+        if (["room_created", "tablet_joined_room", "tablet_mqtt_connected"].includes(item.event)) {
+          retryCountRef.current = 0;
+          tryJoinRef.current?.();
+        }
+        if (item.event === "connection_error" || item.event === "offer_timeout") scheduleRetry();
+      });
+    };
+    connect();
+    return () => {
+      disposed = true;
+      eventSource?.close();
+      if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+    };
+  }, [recordDiagnostic]);
 
   useEffect(() => { manualRotationRef.current = manualRotation; }, [manualRotation]);
   useEffect(() => cleanup, [cleanup]);
-
-  const disconnectedRef = useRef(false);
 
   const disconnect = () => {
     if (dcRef.current && dcRef.current.readyState === "open") {
@@ -499,27 +613,49 @@ export default function ScreenShare() {
 
   const reconnect = () => {
     disconnectedRef.current = false;
+    retryCountRef.current = 0;
+    recordDiagnostic("reconnect_requested", "User requested screenshare reconnect");
     setStatus(STATUS.WAITING);
+    tryJoinRef.current?.();
   };
 
 
   return (
     <Container className="mt-3 mt-md-4 pb-3">
+      <div className="d-flex flex-wrap align-items-center gap-2 mb-3" role="tablist" aria-label="Screen share sections">
+        <Button variant={activeTab === "share" ? "primary" : "outline-secondary"} role="tab" aria-selected={activeTab === "share"} onClick={() => setActiveTab("share")}>Screen share</Button>
+        <Button variant={activeTab === "diagnostics" ? "primary" : "outline-secondary"} role="tab" aria-selected={activeTab === "diagnostics"} onClick={() => setActiveTab("diagnostics")}>Diagnostics <Badge bg={tabletConnected ? "success" : "secondary"}>{tabletConnected ? "Tablet online" : "Tablet offline"}</Badge></Button>
+        <small className="text-muted ms-auto">Live updates: {streamConnected ? "connected" : "reconnecting…"}</small>
+      </div>
+      {activeTab === "diagnostics" ? (
+        <section role="tabpanel" aria-label="Screen share diagnostics">
+          <Alert variant={tabletConnected ? "success" : "warning"}>
+            Tablet MQTT: <strong>{tabletConnected ? "connected" : "not connected"}</strong>. Live diagnostics reconnect automatically; only event summaries are stored, never SDP or ICE credentials.
+          </Alert>
+          <div className="d-flex justify-content-between align-items-center mb-2">
+            <strong>Recent events</strong><small className="text-muted">Retention: {retentionDays} days · showing latest 200</small>
+          </div>
+          <div className="table-responsive" style={{maxHeight: "65vh", overflowY: "auto"}}>
+            <table className="table table-sm table-striped align-middle mb-0">
+              <thead className="sticky-top"><tr><th>Time</th><th>Event</th><th>Details</th></tr></thead>
+              <tbody>{diagnostics.length ? [...diagnostics].reverse().map((item, index) => <tr key={`${item.at}-${index}`}>
+                <td className="text-nowrap">{new Date(item.at).toLocaleString()}</td><td className="text-nowrap">{item.event.replaceAll("_", " ")}</td><td className="text-break">{item.message || "—"}</td>
+              </tr>) : <tr><td colSpan="3" className="text-center text-muted py-4">No diagnostics recorded yet.</td></tr>}</tbody>
+            </table>
+          </div>
+        </section>
+      ) : <>
       {status === STATUS.ERROR && (
         <Alert variant="info">
-          {errorMsg}
-          {disconnectedRef.current && (
-            <Button variant="outline-primary" size="sm" className="ms-3" onClick={reconnect}>
-              Reconnect
-            </Button>
-          )}
+          {errorMsg || "The connection is retrying automatically."}
+          <Button variant="outline-primary" size="sm" className="ms-3" onClick={reconnect}>Reconnect now</Button>
         </Alert>
       )}
 
       {status === STATUS.WAITING && (
         <Alert variant="info">
           <Spinner animation="border" size="sm" className="me-2" />
-          Waiting for reMarkable to start screen sharing...
+          {tabletConnected ? "Tablet connected. Waiting for it to start screen sharing…" : "Waiting for the tablet to connect. Open Diagnostics for connection details."}
         </Alert>
       )}
 
@@ -730,6 +866,7 @@ export default function ScreenShare() {
           );
         })()}
       </div>
+      </>}
     </Container>
   );
 }

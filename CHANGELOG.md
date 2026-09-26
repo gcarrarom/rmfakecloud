@@ -1,3 +1,10 @@
+# 0.0.84
+
+## Improvements
+
+- Add live screen-share status, automatic reconnection, and retained diagnostics.
+- Wake offer requests when the tablet sends its broadcast signaling message.
+
 # 0.0.83
 
 ## Improvements

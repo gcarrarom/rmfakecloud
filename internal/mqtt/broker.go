@@ -362,6 +362,9 @@ func (h *AuthHook) OnConnect(cl *mqtt.Client, pk packets.Packet) error {
 	userID := string(cl.Properties.Username)
 	log.Debugf("MQTT: Client CONNECTED client_id=%s user_id=%s remote=%s clean_session=%t keepalive=%d",
 		cl.ID, userID, cl.Net.Remote, pk.Connect.Clean, pk.Connect.Keepalive)
+	if h.roomManager != nil {
+		h.roomManager.RecordDiagnostic(userID, "tablet_mqtt_connected", "Tablet connected to MQTT signaling")
+	}
 	return nil
 }
 
@@ -374,6 +377,9 @@ func (h *AuthHook) OnDisconnect(cl *mqtt.Client, err error, expire bool) {
 		reason = "expired"
 	}
 	log.Infof("MQTT: Client DISCONNECTED client_id=%s user_id=%s reason=%s", cl.ID, userID, reason)
+	if h.roomManager != nil {
+		h.roomManager.RecordDiagnostic(userID, "tablet_mqtt_disconnected", reason)
+	}
 }
 
 func (h *AuthHook) OnSubscribe(cl *mqtt.Client, pk packets.Packet) packets.Packet {
@@ -608,6 +614,9 @@ func (h *AuthHook) OnPublish(cl *mqtt.Client, pk packets.Packet) (packets.Packet
 
 			log.Debugf("MQTT: Screenshare signaling client_id=%s user_id=%s type=%s room=%s",
 				senderClientID, topicUserID, msg.Type, msg.Room)
+			if h.roomManager != nil {
+				h.roomManager.RecordDiagnostic(topicUserID, "tablet_signaling_received", msg.Type)
+			}
 
 			h.handleSignalingMessage(senderClientID, topicUserID, &msg, pk.FixedHeader.Qos)
 		}

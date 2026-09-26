@@ -102,6 +102,9 @@ func (app *ReactAppWrapper) RegisterRoutes(router *gin.Engine) {
 	ss.GET("room", app.screenshareJoinActive)
 	ss.GET("room/:roomId", app.screenshareGetRoom)
 	ss.GET("offer", app.screenshareGetOffer)
+	ss.GET("diagnostics", app.screenshareDiagnostics)
+	ss.GET("diagnostics/stream", app.screenshareDiagnosticsStream)
+	ss.POST("diagnostics", app.screenshareRecordDiagnostic)
 	ss.POST("room/:roomId/answer", app.screenshareSendAnswer)
 	ss.DELETE("room/:roomId", app.screenshareDeleteRoom)
 

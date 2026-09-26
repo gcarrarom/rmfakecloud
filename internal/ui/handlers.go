@@ -907,8 +907,9 @@ func (app *ReactAppWrapper) screenshareGetOffer(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "no active room"})
 		return
 	}
+	app.roomManager.RecordDiagnostic(uid, "offer_requested", "Browser requested a tablet WebRTC offer")
 
-	app.roomManager.AddBroadcast(roomID, clientID, json.RawMessage(`{"type":"request-offer","clientId":"`+clientID+`"}`))
+	app.roomManager.ClearMessages(roomID)
 
 	var inner map[string]interface{}
 	json.Unmarshal([]byte(`{"type":"request-offer","clientId":"`+clientID+`","sourceDeviceID":"`+clientID+`"}`), &inner)
@@ -931,15 +932,18 @@ func (app *ReactAppWrapper) screenshareGetOffer(c *gin.Context) {
 		}
 	}
 	if !mqttConnected {
+		app.roomManager.RecordDiagnostic(uid, "offer_blocked_no_mqtt", "No tablet MQTT connection is available; check tablet connectivity and the MQTT network path")
 		log.Warnf("Screenshare: request-offer cannot reach tablet room=%s reason=no_mqtt_client", roomID)
 	}
 
-	msgs := app.roomManager.WaitForMessages(roomID, 1, 30*time.Second)
+	msgs := app.roomManager.WaitForMessages(roomID, 0, 30*time.Second)
 	if msgs == nil {
+		app.roomManager.RecordDiagnostic(uid, "offer_timeout", "No tablet offer arrived within 30 seconds")
 		log.Warnf("Screenshare: offer timeout room=%s browser=%s", roomID, clientID)
 		c.JSON(http.StatusGatewayTimeout, gin.H{"error": "timeout waiting for offer"})
 		return
 	}
+	app.roomManager.RecordDiagnostic(uid, "offer_received", "Received a WebRTC offer from the tablet")
 
 	c.JSON(http.StatusOK, gin.H{
 		"roomId":     roomID,
@@ -968,6 +972,7 @@ func (app *ReactAppWrapper) screenshareSendAnswer(c *gin.Context) {
 	}
 
 	app.roomManager.AddDirect(roomID, clientID, msg.TargetClientID, msg.Payload)
+	app.roomManager.RecordDiagnostic(uid, "answer_sent", "Browser sent the WebRTC answer to the tablet")
 
 	var inner map[string]interface{}
 	json.Unmarshal(msg.Payload, &inner)
@@ -990,4 +995,87 @@ func (app *ReactAppWrapper) screenshareDeleteRoom(c *gin.Context) {
 	uid := userID(c)
 	app.roomManager.DeleteAllForUser(uid)
 	c.Status(http.StatusNoContent)
+}
+
+func (app *ReactAppWrapper) screenshareDiagnostics(c *gin.Context) {
+	uid := userID(c)
+	connected := app.mqtt != nil && app.mqtt.HasConnectedClient(uid)
+	c.JSON(http.StatusOK, gin.H{
+		"tabletConnected": connected,
+		"events":          app.roomManager.DiagnosticHistory(uid, 200),
+		"retentionDays":   int(app.roomManager.DiagnosticsRetention() / (24 * time.Hour)),
+	})
+}
+
+func (app *ReactAppWrapper) screenshareDiagnosticsStream(c *gin.Context) {
+	uid := userID(c)
+	stream, unsubscribe := app.roomManager.SubscribeDiagnostics(uid)
+	defer unsubscribe()
+	c.Header("Content-Type", "text/event-stream")
+	c.Header("Cache-Control", "no-cache, no-transform")
+	c.Header("Connection", "keep-alive")
+	c.Header("X-Accel-Buffering", "no")
+	flusher, ok := c.Writer.(http.Flusher)
+	if !ok {
+		c.AbortWithStatus(http.StatusInternalServerError)
+		return
+	}
+	writeEvent := func(name string, payload interface{}) bool {
+		data, err := json.Marshal(payload)
+		if err != nil {
+			return false
+		}
+		if _, err = fmt.Fprintf(c.Writer, "event: %s\ndata: %s\n\n", name, data); err != nil {
+			return false
+		}
+		flusher.Flush()
+		return true
+	}
+	connected := app.mqtt != nil && app.mqtt.HasConnectedClient(uid)
+	if !writeEvent("snapshot", gin.H{
+		"tabletConnected": connected,
+		"events":          app.roomManager.DiagnosticHistory(uid, 200),
+		"retentionDays":   int(app.roomManager.DiagnosticsRetention() / (24 * time.Hour)),
+	}) {
+		return
+	}
+	heartbeat := time.NewTicker(20 * time.Second)
+	defer heartbeat.Stop()
+	for {
+		select {
+		case event, open := <-stream:
+			if !open || !writeEvent("diagnostic", event) {
+				return
+			}
+		case <-heartbeat.C:
+			if _, err := fmt.Fprint(c.Writer, ": keepalive\n\n"); err != nil {
+				return
+			}
+			flusher.Flush()
+		case <-c.Request.Context().Done():
+			return
+		}
+	}
+}
+
+func (app *ReactAppWrapper) screenshareRecordDiagnostic(c *gin.Context) {
+	var event struct {
+		Event   string `json:"event"`
+		Message string `json:"message"`
+	}
+	if err := c.ShouldBindJSON(&event); err != nil {
+		badReq(c, "invalid diagnostic event")
+		return
+	}
+	allowed := map[string]bool{
+		"browser_connected": true, "reconnect_requested": true, "ice_gathering": true,
+		"ice_connection": true, "peer_connection": true, "datachannel_open": true,
+		"stream_started": true, "connection_error": true,
+	}
+	if !allowed[event.Event] {
+		badReq(c, "unsupported diagnostic event")
+		return
+	}
+	app.roomManager.RecordDiagnostic(userID(c), event.Event, event.Message)
+	c.Status(http.StatusAccepted)
 }

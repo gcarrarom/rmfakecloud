@@ -5,7 +5,9 @@ import (
 	"crypto/tls"
 	"fmt"
 	"net/http"
+	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -120,7 +122,6 @@ func (app *App) Stop() {
 	}
 }
 
-
 // NewApp constructs an app
 func NewApp(cfg *config.Config) App {
 	debugMode := log.GetLevel() >= log.DebugLevel
@@ -191,7 +192,11 @@ func NewApp(cfg *config.Config) App {
 		fileWatcher: fw,
 	}
 
-	roomMgr := screenshare.NewRoomManager()
+	roomMgr := screenshare.NewRoomManagerWithDiagnostics(
+		cfg.DataDir,
+		intEnv("SCREENSHARE_DIAGNOSTICS_RETENTION_DAYS", 7),
+		intEnv("SCREENSHARE_DIAGNOSTICS_MAX_EVENTS", 5000),
+	)
 	app.roomManager = roomMgr
 	app.mqttBroker = mqtt.NewBroker(cfg.MQTTPort, nil, app.validateMQTTToken, cfg.ICEServers, roomMgr, ntfHub)
 
@@ -204,6 +209,14 @@ func NewApp(cfg *config.Config) App {
 	storageapp.RegisterRoutes(router)
 
 	return app
+}
+
+func intEnv(key string, fallback int) int {
+	value, err := strconv.Atoi(os.Getenv(key))
+	if err != nil || value <= 0 {
+		return fallback
+	}
+	return value
 }
 
 func badReq(c *gin.Context, message string) {
