@@ -1,3 +1,9 @@
+# 0.0.83
+
+## Improvements
+
+- Improve file-drop feedback with accepted/rejected states, upload progress, and queued file details.
+
 # 0.0.82
 
 ## Bug fixes
